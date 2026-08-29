@@ -1,0 +1,137 @@
+/* ============================================
+   CLINORA — Design Token System
+   Extracted from Figma designs
+   ============================================ */
+
+:root {
+  /* Background hierarchy */
+  --bg-body: #0a0a1a;
+  --bg-sidebar: #12112a;
+  --bg-card: #1a1840;
+  --bg-card-hover: #221f50;
+  --bg-input: #141230;
+  --bg-surface: #0f0e24;
+
+  /* Borders */
+  --border: rgba(255, 255, 255, 0.08);
+  --border-focus: rgba(124, 92, 191, 0.5);
+  --border-card: rgba(255, 255, 255, 0.06);
+
+  /* Accent colors */
+  --accent-coral: #e8634b;
+  --accent-coral-hover: #f07058;
+  --accent-coral-subtle: rgba(232, 99, 75, 0.12);
+  --accent-purple: #7c5cbf;
+  --accent-purple-subtle: rgba(124, 92, 191, 0.15);
+  --accent-lavender: #a78bfa;
+  --accent-mint: #34d399;
+  --accent-mint-subtle: rgba(52, 211, 153, 0.12);
+  --accent-amber: #f59e0b;
+  --accent-amber-subtle: rgba(245, 158, 11, 0.12);
+  --accent-blue: #60a5fa;
+  --accent-red: #ef4444;
+  --accent-red-subtle: rgba(239, 68, 68, 0.12);
+
+  /* Text */
+  --text-primary: #f1f0f5;
+  --text-secondary: #a09cb5;
+  --text-dim: #6b6580;
+  --text-inverse: #0a0a1a;
+
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Spacing */
+  --sidebar-width: 220px;
+  --topbar-height: 64px;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.25);
+  --shadow-elevated: 0 8px 40px rgba(0, 0, 0, 0.35);
+}
+
+/* ============================================
+   Global Reset
+   ============================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-body);
+  color: var(--text-primary);
+  line-height: 1.5;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+a {
+  color: var(--accent-lavender);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+button {
+  font-family: var(--font-sans);
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+
+input, textarea, select {
+  font-family: var(--font-sans);
+  outline: none;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+/* ============================================
+   Scrollbar Styling
+   ============================================ */
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
