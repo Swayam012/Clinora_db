@@ -1,4 +1,7 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { X, UserPlus, Save } from 'lucide-react';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
 
 export default function PatientFormModal({ isOpen, onClose, onSubmit, initialData = null }) {
   const [formData, setFormData] = useState({
@@ -41,26 +44,45 @@ export default function PatientFormModal({ isOpen, onClose, onSubmit, initialDat
   };
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>{initialData ? 'Edit Patient Record' : 'Register New Patient'}</h3>
-          <button className="modal-close-btn" onClick={onClose}>
-            ✕
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-in fade-in duration-200">
+      <div
+        className="w-full max-w-2xl rounded-2xl border border-white/10 bg-slate-900 shadow-2xl p-6 max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-white/[0.08] pb-4 mb-5">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-purple/20 text-brand-lavender border border-brand-purple/30">
+              <UserPlus className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-white">
+                {initialData ? 'Edit Patient Profile' : 'Register New Patient'}
+              </h3>
+              <p className="text-xs text-slate-400">Clinical demographic & emergency records</p>
+            </div>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+          >
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        {error && <div className="login-error" style={{ marginBottom: '1.25rem' }}>{error}</div>}
+        {error && (
+          <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-xs font-medium text-red-400">
+            {error}
+          </div>
+        )}
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-grid-2">
-            <div className="form-group">
-              <label>First Name *</label>
-              <input
-                type="text"
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-300">First Name *</label>
+              <Input
                 name="first_name"
-                className="form-input"
-                style={{ paddingLeft: '0.85rem' }}
                 placeholder="e.g. Rajesh"
                 value={formData.first_name}
                 onChange={handleChange}
@@ -68,13 +90,10 @@ export default function PatientFormModal({ isOpen, onClose, onSubmit, initialDat
               />
             </div>
 
-            <div className="form-group">
-              <label>Last Name *</label>
-              <input
-                type="text"
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-300">Last Name *</label>
+              <Input
                 name="last_name"
-                className="form-input"
-                style={{ paddingLeft: '0.85rem' }}
                 placeholder="e.g. Kumar"
                 value={formData.last_name}
                 onChange={handleChange}
@@ -83,28 +102,25 @@ export default function PatientFormModal({ isOpen, onClose, onSubmit, initialDat
             </div>
           </div>
 
-          <div className="form-grid-2">
-            <div className="form-group">
-              <label>Date of Birth *</label>
-              <input
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-300">Date of Birth *</label>
+              <Input
                 type="date"
                 name="date_of_birth"
-                className="form-input"
-                style={{ paddingLeft: '0.85rem' }}
                 value={formData.date_of_birth}
                 onChange={handleChange}
                 required
               />
             </div>
 
-            <div className="form-group">
-              <label>Gender *</label>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-300">Gender *</label>
               <select
                 name="gender"
-                className="form-input"
-                style={{ paddingLeft: '0.85rem' }}
                 value={formData.gender}
                 onChange={handleChange}
+                className="flex h-9 w-full rounded-lg border border-white/10 bg-slate-900/80 px-3 py-1 text-sm text-slate-100 focus:outline-none focus:border-brand-purple"
               >
                 <option value="male">Male</option>
                 <option value="female">Female</option>
@@ -113,28 +129,25 @@ export default function PatientFormModal({ isOpen, onClose, onSubmit, initialDat
             </div>
           </div>
 
-          <div className="form-grid-2">
-            <div className="form-group">
-              <label>Phone Number</label>
-              <input
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-300">Phone Number</label>
+              <Input
                 type="tel"
                 name="phone"
-                className="form-input"
-                style={{ paddingLeft: '0.85rem' }}
                 placeholder="+91 98765 43210"
                 value={formData.phone}
                 onChange={handleChange}
               />
             </div>
 
-            <div className="form-group">
-              <label>Blood Group</label>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-300">Blood Group</label>
               <select
                 name="blood_group"
-                className="form-input"
-                style={{ paddingLeft: '0.85rem' }}
                 value={formData.blood_group}
                 onChange={handleChange}
+                className="flex h-9 w-full rounded-lg border border-white/10 bg-slate-900/80 px-3 py-1 text-sm text-slate-100 focus:outline-none focus:border-brand-purple"
               >
                 <option value="A+">A+</option>
                 <option value="A-">A-</option>
@@ -148,53 +161,43 @@ export default function PatientFormModal({ isOpen, onClose, onSubmit, initialDat
             </div>
           </div>
 
-          <div className="form-group">
-            <label>Email Address</label>
-            <input
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-slate-300">Email Address</label>
+            <Input
               type="email"
               name="email"
-              className="form-input"
-              style={{ paddingLeft: '0.85rem' }}
-              placeholder="patient@example.com"
+              placeholder="patient@domain.com"
               value={formData.email}
               onChange={handleChange}
             />
           </div>
 
-          <div className="form-group">
-            <label>Address</label>
-            <input
-              type="text"
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-slate-300">Address</label>
+            <Input
               name="address"
-              className="form-input"
-              style={{ paddingLeft: '0.85rem' }}
-              placeholder="Full address"
+              placeholder="Residential address..."
               value={formData.address}
               onChange={handleChange}
             />
           </div>
 
-          <div className="form-grid-2">
-            <div className="form-group">
-              <label>Emergency Contact Name</label>
-              <input
-                type="text"
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-300">Emergency Contact Name</label>
+              <Input
                 name="emergency_contact_name"
-                className="form-input"
-                style={{ paddingLeft: '0.85rem' }}
                 placeholder="Relative / Guardian"
                 value={formData.emergency_contact_name}
                 onChange={handleChange}
               />
             </div>
 
-            <div className="form-group">
-              <label>Emergency Contact Phone</label>
-              <input
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-300">Emergency Contact Phone</label>
+              <Input
                 type="tel"
                 name="emergency_contact_phone"
-                className="form-input"
-                style={{ paddingLeft: '0.85rem' }}
                 placeholder="+91 98765 00000"
                 value={formData.emergency_contact_phone}
                 onChange={handleChange}
@@ -202,25 +205,26 @@ export default function PatientFormModal({ isOpen, onClose, onSubmit, initialDat
             </div>
           </div>
 
-          <div className="form-group">
-            <label>Medical History / Clinical Notes</label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-slate-300">Medical Notes & History</label>
             <textarea
               name="medical_notes"
-              className="form-input"
-              style={{ paddingLeft: '0.85rem', minHeight: '80px' }}
-              placeholder="Known conditions, allergies, regular medications..."
+              rows={3}
               value={formData.medical_notes}
               onChange={handleChange}
+              placeholder="Known conditions, allergies, or previous surgical background..."
+              className="w-full rounded-lg border border-white/10 bg-slate-900/80 p-3 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-brand-purple"
             />
           </div>
 
-          <div className="modal-actions">
-            <button type="button" className="btn-secondary" onClick={onClose} disabled={loading}>
+          <div className="flex items-center justify-end gap-3 border-t border-white/[0.08] pt-4 mt-5">
+            <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={loading}>
               Cancel
-            </button>
-            <button type="submit" className="btn-add-patient" disabled={loading}>
-              {loading ? 'Saving...' : initialData ? 'Save Changes' : 'Register Patient'}
-            </button>
+            </Button>
+            <Button type="submit" variant="coral" size="sm" disabled={loading}>
+              <Save className="mr-1.5 h-3.5 w-3.5" />
+              {loading ? 'Saving...' : initialData ? 'Update Profile' : 'Register Patient'}
+            </Button>
           </div>
         </form>
       </div>

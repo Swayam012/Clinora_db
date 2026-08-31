@@ -67,3 +67,20 @@ def get_current_user(
         )
 
     return user
+
+
+def validate_token_string(token: str, db: Session):
+    """Validates a JWT token string without raising exceptions directly."""
+    try:
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
+        user_id_str: str | None = payload.get("sub")
+        if user_id_str is None:
+            return None
+        user = get_user_by_id(db, uuid.UUID(user_id_str))
+        if user and user.is_active:
+            return user
+    except Exception:
+        return None
+    return None

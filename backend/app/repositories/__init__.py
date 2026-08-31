@@ -8,6 +8,14 @@ from .patient_repository import (
     delete_patient,
     get_next_patient_sequence,
 )
+from .document_repository import (
+    get_document_by_id,
+    get_documents,
+    create_document,
+    update_document,
+    delete_document,
+    get_document_by_checksum,
+)
 
 __all__ = [
     "get_user_by_email",
@@ -20,4 +28,10 @@ __all__ = [
     "update_patient",
     "delete_patient",
     "get_next_patient_sequence",
+    "get_document_by_id",
+    "get_documents",
+    "create_document",
+    "update_document",
+    "delete_document",
+    "get_document_by_checksum",
 ]

@@ -7,6 +7,14 @@ from .patient_service import (
     soft_delete_patient,
     generate_patient_id,
 )
+from .document_service import (
+    save_and_register_document,
+    fetch_documents,
+    fetch_document_details,
+    get_document_file_path,
+    modify_document,
+    remove_document,
+)
 
 __all__ = [
     "register_user",
@@ -17,4 +25,10 @@ __all__ = [
     "update_patient_details",
     "soft_delete_patient",
     "generate_patient_id",
+    "save_and_register_document",
+    "fetch_documents",
+    "fetch_document_details",
+    "get_document_file_path",
+    "modify_document",
+    "remove_document",
 ]

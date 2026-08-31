@@ -19,6 +19,7 @@ if config.config_file_name is not None:
 from app.db.session import Base
 from app.models.user import User  # noqa: F401
 from app.models.patient import Patient  # noqa: F401
+from app.models.document import Document  # noqa: F401
 
 target_metadata = Base.metadata
 

@@ -1,13 +1,24 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/layout/Sidebar';
 import Topbar from '../components/layout/Topbar';
-import StatusBadge from '../components/ui/StatusBadge';
+import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Badge } from '../components/ui/badge';
 import PatientFormModal from '../components/patients/PatientFormModal';
 import { currentUser, mockPatients } from '../services/mockData';
 import { getPatients, createPatient } from '../services/api';
-import '../styles/dashboard.css';
-import '../styles/patients.css';
+import {
+  Users,
+  UserPlus,
+  Search,
+  ArrowRight,
+  Phone,
+  Droplet,
+  Calendar,
+  Filter,
+} from 'lucide-react';
 
 export default function PatientsPage() {
   const navigate = useNavigate();
@@ -15,17 +26,14 @@ export default function PatientsPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [error, setError] = useState('');
 
   const loadPatients = async (search = '') => {
     setLoading(true);
-    setError('');
     try {
       const data = await getPatients(1, 50, search);
       if (data?.patients && data.patients.length > 0) {
         setPatients(data.patients);
       } else {
-        // If DB is empty, use mock fallback for initial demonstration
         const filteredMock = search
           ? mockPatients.filter((p) =>
               `${p.first_name} ${p.last_name} ${p.patient_id}`
@@ -36,7 +44,6 @@ export default function PatientsPage() {
         setPatients(filteredMock);
       }
     } catch (err) {
-      // Fallback to mock data if backend not connected or token expired
       const filteredMock = search
         ? mockPatients.filter((p) =>
             `${p.first_name} ${p.last_name} ${p.patient_id}`
@@ -59,7 +66,6 @@ export default function PatientsPage() {
       const created = await createPatient(formData);
       setPatients((prev) => [created, ...prev]);
     } catch (err) {
-      // If offline, add locally with generated mock ID
       const newMock = {
         ...formData,
         id: `mock-${Date.now()}`,
@@ -72,111 +78,141 @@ export default function PatientsPage() {
   };
 
   return (
-    <div className="app-layout">
+    <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans">
       <Sidebar />
-      <div className="app-main">
+
+      <div className="flex flex-1 flex-col ml-64 min-w-0">
         <Topbar user={currentUser} />
 
-        <main className="app-content">
-          <div className="page-header-actions">
+        <main className="flex-1 space-y-6 p-8">
+          {/* Header Section */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="page-header-title">Patients Directory</h2>
-              <p className="page-header-subtitle">
-                Manage registered patients, demographic records, and linked clinical documents.
+              <div className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-brand-lavender" />
+                <h1 className="text-xl font-bold text-white tracking-tight">Patients Directory</h1>
+              </div>
+              <p className="text-xs text-slate-400 mt-1">
+                Manage demographic records, linked clinical documents, and medical history profiles.
               </p>
             </div>
 
-            <div className="search-filter-bar">
-              <div className="search-input-box">
-                <span className="search-icon">⌕</span>
-                <input
-                  type="text"
-                  placeholder="Search by name, ID or phone..."
+            <div className="flex items-center gap-3">
+              <div className="w-64">
+                <Input
+                  icon={Search}
+                  placeholder="Search patient name, ID..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  className="h-9 text-xs"
                 />
               </div>
 
-              <button className="btn-add-patient" onClick={() => setIsModalOpen(true)}>
-                + Register Patient
-              </button>
+              <Button
+                variant="coral"
+                size="sm"
+                onClick={() => setIsModalOpen(true)}
+                className="h-9 text-xs whitespace-nowrap font-semibold shadow-md"
+              >
+                <UserPlus className="mr-1.5 h-3.5 w-3.5" />
+                Register Patient
+              </Button>
             </div>
           </div>
 
-          <div className="card">
-            <div className="table-wrapper">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Patient Name</th>
-                    <th>Patient ID</th>
-                    <th>Gender</th>
-                    <th>Date of Birth</th>
-                    <th>Blood Group</th>
-                    <th>Phone</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
+          {/* Patients Table Card */}
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-900/80 text-slate-400 uppercase tracking-wider font-semibold border-b border-white/[0.06]">
                     <tr>
-                      <td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-dim)' }}>
-                        Loading patient records...
-                      </td>
+                      <th className="py-3.5 px-5">Patient Name</th>
+                      <th className="py-3.5 px-5">Patient ID</th>
+                      <th className="py-3.5 px-5">Gender</th>
+                      <th className="py-3.5 px-5">Date of Birth</th>
+                      <th className="py-3.5 px-5">Blood Group</th>
+                      <th className="py-3.5 px-5">Contact</th>
+                      <th className="py-3.5 px-5">Status</th>
+                      <th className="py-3.5 px-5 text-right">Actions</th>
                     </tr>
-                  ) : patients.length === 0 ? (
-                    <tr>
-                      <td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-dim)' }}>
-                        No patients found matching "{searchTerm}"
-                      </td>
-                    </tr>
-                  ) : (
-                    patients.map((p) => (
-                      <tr
-                        key={p.id}
-                        className="clickable-row"
-                        onClick={() => navigate(`/patients/${p.id}`, { state: { patient: p } })}
-                      >
-                        <td>
-                          <div className="patient-name-cell">
-                            <div className="patient-avatar-mini">
-                              {p.first_name?.charAt(0)}
-                            </div>
-                            <span>{p.first_name} {p.last_name}</span>
-                          </div>
-                        </td>
-                        <td className="table-mono">{p.patient_id}</td>
-                        <td style={{ textTransform: 'capitalize' }}>{p.gender}</td>
-                        <td className="table-dim">{p.date_of_birth}</td>
-                        <td>
-                          <span style={{ color: 'var(--accent-coral)', fontWeight: 600 }}>
-                            {p.blood_group || '--'}
-                          </span>
-                        </td>
-                        <td className="table-dim">{p.phone || '--'}</td>
-                        <td>
-                          <StatusBadge status={p.is_active ? 'processed' : 'pending'} />
-                        </td>
-                        <td>
-                          <button
-                            className="table-action-btn"
-                            title="View Profile"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/patients/${p.id}`, { state: { patient: p } });
-                            }}
-                          >
-                            →
-                          </button>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.04]">
+                    {loading ? (
+                      <tr>
+                        <td colSpan="8" className="py-10 text-center text-slate-500 text-xs">
+                          Loading registered patients...
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                    ) : patients.length === 0 ? (
+                      <tr>
+                        <td colSpan="8" className="py-10 text-center text-slate-500 text-xs">
+                          No patients found matching "{searchTerm}".
+                        </td>
+                      </tr>
+                    ) : (
+                      patients.map((p) => (
+                        <tr
+                          key={p.id}
+                          className="hover:bg-slate-800/40 transition-colors cursor-pointer"
+                          onClick={() => navigate(`/patients/${p.id}`, { state: { patient: p } })}
+                        >
+                          <td className="py-3.5 px-5">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-tr from-brand-purple/20 to-indigo-600/20 text-brand-lavender font-bold text-xs border border-brand-purple/30">
+                                {p.first_name?.charAt(0)}
+                              </div>
+                              <div>
+                                <span className="font-semibold text-slate-200">
+                                  {p.first_name} {p.last_name}
+                                </span>
+                                <div className="text-[10px] text-slate-500">{p.email || 'No email'}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-5 font-mono text-[11px] text-brand-lavender font-medium">
+                            {p.patient_id}
+                          </td>
+                          <td className="py-3.5 px-5 capitalize text-slate-300">
+                            {p.gender}
+                          </td>
+                          <td className="py-3.5 px-5 text-slate-400">
+                            {p.date_of_birth}
+                          </td>
+                          <td className="py-3.5 px-5">
+                            <span className="font-bold text-brand-coral bg-brand-coral/10 px-2 py-0.5 rounded border border-brand-coral/20">
+                              {p.blood_group || '--'}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-5 text-slate-400">
+                            {p.phone || '--'}
+                          </td>
+                          <td className="py-3.5 px-5">
+                            <Badge variant={p.is_active ? 'mint' : 'destructive'}>
+                              {p.is_active ? 'Active Profile' : 'Inactive'}
+                            </Badge>
+                          </td>
+                          <td className="py-3.5 px-5 text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-slate-400 hover:text-white"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/patients/${p.id}`, { state: { patient: p } });
+                              }}
+                            >
+                              <ArrowRight className="h-3.5 w-3.5" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
         </main>
       </div>
 
