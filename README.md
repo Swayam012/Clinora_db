@@ -100,9 +100,9 @@ The frontend application will start at: `http://localhost:5173`
 ## 🔍 Phase Status
 
 - [x] **Phase 1 — Foundation**: FastAPI Backend, React/Vite Frontend, PostgreSQL Setup, Environment Configuration, Health Endpoint, CORS Middleware, `.gitignore`, `README`.
-- [ ] **Phase 2 — Authentication**: JWT auth, password hashing, role-based access control.
-- [ ] **Phase 3 — Patient Management**: Patient CRUD and search.
-- [ ] **Phase 4 — Document Storage**: Upload and manage prescriptions, lab reports, notes.
+- [x] **Phase 2 — Authentication**: JWT auth, password hashing, role-based access control.
+- [x] **Phase 3 — Patient Management**: Patient CRUD and search.
+- [x] **Phase 4 — Document Storage**: Upload and manage prescriptions, lab reports, notes.
 - [ ] **Phase 5 — OCR Engine**: Tesseract text extraction.
 - [ ] **Phase 6 — Information Extraction**: LLM structured data extraction.
 - [ ] **Phase 7 — Clinical RAG**: Vector DB search & Q&A.
