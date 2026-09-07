@@ -10,18 +10,12 @@ Clinora is a web-based AI system for digitizing, organizing, searching, and anal
 Clinora/
 ├── backend/                  # FastAPI Python Backend
 │   ├── app/
-│   │   ├── api/              # API Endpoints & Routers
-│   │   │   └── v1/
-│   │   │       ├── api.py
-│   │   │       └── endpoints/
-│   │   │           └── health.py
-│   │   ├── core/             # App Configuration & Settings
-│   │   │   └── config.py
+│   │   ├── api/              # API Endpoints & Routers (Auth, Patients, Documents, Health)
+│   │   ├── core/             # App Configuration, Rate Limiting & Security
 │   │   ├── db/               # Database Connection & Sessions
-│   │   │   └── session.py
-│   │   ├── models/           # SQLAlchemy Models
-│   │   ├── schemas/          # Pydantic Schemas
-│   │   ├── services/         # Business Logic
+│   │   ├── models/           # SQLAlchemy Database Models
+│   │   ├── schemas/          # Pydantic Input/Output Schemas
+│   │   ├── services/         # Business Logic & OCR Engine
 │   │   ├── repositories/     # Data Access Layer
 │   │   └── utils/            # Utilities
 │   ├── main.py               # Server Entrypoint
@@ -30,10 +24,11 @@ Clinora/
 │
 ├── frontend/                 # React + Vite Frontend
 │   ├── src/
-│   │   ├── services/         # API Service Calls
-│   │   │   └── api.js
-│   │   ├── App.jsx           # Main Dashboard Component
-│   │   └── index.css         # Clinical UI Styling
+│   │   ├── components/       # shadcn/ui & Layout Components
+│   │   ├── pages/            # Login, Dashboard, Patients, Documents, Viewer
+│   │   ├── services/         # API Service Calls & Auth Handling
+│   │   ├── App.jsx           # Main Router with ProtectedRoute Guards
+│   │   └── index.css         # Clinical UI Styling & Tailwind
 │   └── package.json
 │
 └── README.md
@@ -43,16 +38,18 @@ Clinora/
 
 ## ⚙️ Requirements
 
-* **Python**: 3.11+
-* **Package Manager**: `uv` (Fast Python package installer)
-* **Node.js**: 18+
-* **Database**: PostgreSQL
+* **Backend (Python / FastAPI)**:
+  * **Python**: 3.11+
+  * **Package Manager**: `uv` (Fast Python package manager)
+  * **Database**: PostgreSQL
+* **Frontend (React / Vite)**:
+  * **Node.js**: 18+ (Required for `npm` and Vite bundler)
 
 ---
 
 ## 🚀 Quick Start Guide
 
-### 1. Backend Setup
+### 1. Backend Setup (FastAPI)
 
 Navigate to the `backend/` directory:
 
@@ -72,13 +69,13 @@ Install dependencies and start the backend server using `uv`:
 uv run python main.py
 ```
 
-The FastAPI server will start at: `http://localhost:8000`
-Swagger API Documentation: `http://localhost:8000/docs`
-Health Endpoint: `http://localhost:8000/health`
+* The FastAPI server will start at: `http://localhost:8000`
+* Swagger API Documentation: `http://localhost:8000/docs`
+* Health Endpoint: `http://localhost:8000/health`
 
 ---
 
-### 2. Frontend Setup
+### 2. Frontend Setup (React + Vite)
 
 In a separate terminal, navigate to the `frontend/` directory:
 
@@ -93,20 +90,20 @@ npm install
 npm run dev
 ```
 
-The frontend application will start at: `http://localhost:5173`
+* The frontend application will start at: `http://localhost:5173`
 
 ---
 
 ## 🔍 Phase Status
 
 - [x] **Phase 1 — Foundation**: FastAPI Backend, React/Vite Frontend, PostgreSQL Setup, Environment Configuration, Health Endpoint, CORS Middleware, `.gitignore`, `README`.
-- [x] **Phase 2 — Authentication**: JWT auth, password hashing, role-based access control.
+- [x] **Phase 2 — Authentication**: JWT auth, bcrypt password hashing, role-based access control.
 - [x] **Phase 3 — Patient Management**: Patient CRUD and search.
 - [x] **Phase 4 — Document Storage**: Upload and manage prescriptions, lab reports, notes.
-- [ ] **Phase 5 — OCR Engine**: Tesseract text extraction.
+- [x] **Phase 5 — OCR Engine**: Multi-engine text extraction (RapidOCR neural model, PyMuPDF native extraction, Tesseract fallback).
 - [ ] **Phase 6 — Information Extraction**: LLM structured data extraction.
 - [ ] **Phase 7 — Clinical RAG**: Vector DB search & Q&A.
 - [ ] **Phase 8 — Knowledge Graph**: Neo4j entity relationships.
 - [ ] **Phase 9 — AI Agents**: Task-focused workflow agents.
 - [ ] **Phase 10 — Dashboard**: Complete UI and reporting analytics.
-- [ ] **Phase 11 — Security & Audit**: Security hardening and testing.
+- [x] **Phase 11 — Security & Hardening**: Rate limiting (SlowAPI), magic byte upload validation, security headers, CORS lockdown, route guards, input validation.
