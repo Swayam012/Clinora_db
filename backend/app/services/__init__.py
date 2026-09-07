@@ -16,6 +16,7 @@ from .document_service import (
     remove_document,
 )
 from .ocr_service import process_document_ocr
+from .clinical_extraction_service import extract_clinical_information
 
 __all__ = [
     "register_user",
@@ -33,4 +34,5 @@ __all__ = [
     "modify_document",
     "remove_document",
     "process_document_ocr",
+    "extract_clinical_information",
 ]

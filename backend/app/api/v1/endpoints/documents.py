@@ -206,6 +206,40 @@ def trigger_document_ocr(
         )
 
 
+@router.post(
+    "/{document_id}/extract",
+    response_model=DocumentResponse,
+    summary="Extract structured clinical information via AI LLM",
+)
+@limiter.limit("15/minute")
+def trigger_clinical_extraction(
+    request: Request,
+    document_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Extracts structured clinical information (demographics, diagnoses with ICD-10,
+    symptoms, medications, lab results/vitals, and clinical summary) using LLM / medical NLP.
+    """
+    from app.services.clinical_extraction_service import extract_clinical_information
+
+    try:
+        result = extract_clinical_information(db, document_id)
+        return result
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    except Exception as e:
+        logger.exception(f"Clinical extraction failed for document {document_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Clinical information extraction failed. Please try again later.",
+        )
+
+
 @router.put(
     "/{document_id}",
     response_model=DocumentResponse,

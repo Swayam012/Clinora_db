@@ -261,6 +261,19 @@ export async function triggerDocumentOcr(documentId) {
 }
 
 /**
+ * Trigger structured clinical information extraction via LLM/NLP (Phase 6).
+ * POST /api/v1/documents/{documentId}/extract
+ */
+export async function triggerClinicalExtraction(documentId) {
+  const response = await fetch(`${API_BASE_URL}/api/v1/documents/${documentId}/extract`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
+  return handleApiResponse(response, "Clinical entity extraction failed");
+}
+
+/**
  * Update document metadata or processing status.
  */
 export async function updateDocument(documentId, updateData) {

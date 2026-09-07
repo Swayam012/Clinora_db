@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     OCR_DPI: int = 300           # DPI for rendering PDF pages to images
     OCR_CONFIDENCE_THRESHOLD: float = 30.0  # minimum Tesseract mean confidence %
 
+    # LLM Clinical Extraction Configuration
+    GEMINI_API_KEY: Union[str, None] = None
+    LLM_MODEL: str = "gemini-2.5-flash"
+
     def get_database_url(self) -> str:
         if self.DATABASE_URL:
             return self.DATABASE_URL

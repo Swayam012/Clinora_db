@@ -1,6 +1,16 @@
 from .user import UserCreate, UserLogin, UserResponse, Token
 from .patient import PatientBase, PatientCreate, PatientUpdate, PatientResponse, PatientListResponse
 from .document import DocumentBase, DocumentCreate, DocumentUpdate, DocumentResponse, DocumentListResponse
+from .clinical_extraction import (
+    ClinicalExtractionResult,
+    DemographicsData,
+    VitalsData,
+    SymptomItem,
+    DiagnosisItem,
+    MedicationItem,
+    LabResultItem,
+    AllergyItem,
+)
 
 __all__ = [
     "UserCreate",
@@ -17,4 +27,12 @@ __all__ = [
     "DocumentUpdate",
     "DocumentResponse",
     "DocumentListResponse",
+    "ClinicalExtractionResult",
+    "DemographicsData",
+    "VitalsData",
+    "SymptomItem",
+    "DiagnosisItem",
+    "MedicationItem",
+    "LabResultItem",
+    "AllergyItem",
 ]
