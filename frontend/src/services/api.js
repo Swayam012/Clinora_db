@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 function getAuthHeaders(isMultipart = false) {
   const token = localStorage.getItem("clinora_token");
@@ -10,6 +10,37 @@ function getAuthHeaders(isMultipart = false) {
     headers["Authorization"] = `Bearer ${token}`;
   }
   return headers;
+}
+
+async function handleApiResponse(response, defaultErrorMsg = "Request failed") {
+  if (response.status === 429) {
+    let errorDetail = "Rate limit exceeded. Please wait a moment before trying again.";
+    try {
+      const data = await response.json();
+      if (data?.detail) errorDetail = data.detail;
+    } catch {
+      // fallback
+    }
+    throw new Error(errorDetail);
+  }
+
+  if (response.status === 401) {
+    localStorage.removeItem("clinora_token");
+    let errorDetail = "Authentication required or session expired. Please sign in.";
+    try {
+      const data = await response.json();
+      if (data?.detail) errorDetail = data.detail;
+    } catch {
+      // fallback
+    }
+    throw new Error(errorDetail);
+  }
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.detail || defaultErrorMsg);
+  }
+  return data;
 }
 
 /**
@@ -46,11 +77,7 @@ export async function loginUser(email, password) {
     body: JSON.stringify({ email, password }),
   });
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.detail || "Login failed");
-  }
-  return data;
+  return handleApiResponse(response, "Login failed");
 }
 
 /**
@@ -63,15 +90,11 @@ export async function registerUser(userData) {
     body: JSON.stringify(userData),
   });
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.detail || "Registration failed");
-  }
-  return data;
+  return handleApiResponse(response, "Registration failed");
 }
 
 /**
- * Get current authenticated user profile.
+ * Fetch profile of currently authenticated user.
  */
 export async function getCurrentUser() {
   const response = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
@@ -79,34 +102,35 @@ export async function getCurrentUser() {
     headers: getAuthHeaders(),
   });
 
-  if (!response.ok) {
-    throw new Error("Not authenticated");
-  }
-  return response.json();
+  return handleApiResponse(response, "Failed to fetch user profile");
 }
 
 /**
- * List patients with pagination and optional search filter.
+ * Fetch paginated list of patients.
  */
-export async function getPatients(page = 1, perPage = 50, search = "") {
-  let url = `${API_BASE_URL}/api/v1/patients?page=${page}&per_page=${perPage}`;
+export async function getPatients(page = 1, perPage = 20, search = "", isActive = true) {
+  const params = new URLSearchParams({
+    page: String(page),
+    per_page: String(perPage),
+  });
+
   if (search) {
-    url += `&search=${encodeURIComponent(search)}`;
+    params.append("search", search);
+  }
+  if (isActive !== null) {
+    params.append("is_active", String(isActive));
   }
 
-  const response = await fetch(url, {
+  const response = await fetch(`${API_BASE_URL}/api/v1/patients?${params.toString()}`, {
     method: "GET",
     headers: getAuthHeaders(),
   });
 
-  if (!response.ok) {
-    throw new Error("Failed to fetch patients");
-  }
-  return response.json();
+  return handleApiResponse(response, "Failed to fetch patients");
 }
 
 /**
- * Get single patient details by ID.
+ * Fetch single patient by UUID.
  */
 export async function getPatient(patientId) {
   const response = await fetch(`${API_BASE_URL}/api/v1/patients/${patientId}`, {
@@ -114,14 +138,11 @@ export async function getPatient(patientId) {
     headers: getAuthHeaders(),
   });
 
-  if (!response.ok) {
-    throw new Error("Failed to fetch patient details");
-  }
-  return response.json();
+  return handleApiResponse(response, "Failed to fetch patient details");
 }
 
 /**
- * Create a new patient.
+ * Create a new patient record.
  */
 export async function createPatient(patientData) {
   const response = await fetch(`${API_BASE_URL}/api/v1/patients`, {
@@ -130,32 +151,24 @@ export async function createPatient(patientData) {
     body: JSON.stringify(patientData),
   });
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.detail || "Failed to create patient");
-  }
-  return data;
+  return handleApiResponse(response, "Failed to create patient");
 }
 
 /**
- * Update an existing patient.
+ * Update an existing patient record.
  */
-export async function updatePatient(patientId, updateData) {
+export async function updatePatient(patientId, patientData) {
   const response = await fetch(`${API_BASE_URL}/api/v1/patients/${patientId}`, {
     method: "PUT",
     headers: getAuthHeaders(),
-    body: JSON.stringify(updateData),
+    body: JSON.stringify(patientData),
   });
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.detail || "Failed to update patient");
-  }
-  return data;
+  return handleApiResponse(response, "Failed to update patient");
 }
 
 /**
- * Soft delete / deactivate a patient.
+ * Soft delete a patient record.
  */
 export async function deletePatient(patientId) {
   const response = await fetch(`${API_BASE_URL}/api/v1/patients/${patientId}`, {
@@ -163,35 +176,24 @@ export async function deletePatient(patientId) {
     headers: getAuthHeaders(),
   });
 
-  if (!response.ok) {
-    throw new Error("Failed to delete patient");
-  }
-  return response.json();
+  return handleApiResponse(response, "Failed to delete patient");
 }
 
-// ============================================
-// Clinical Document Management API
-// ============================================
-
 /**
- * Upload a clinical document with file and metadata.
+ * Upload a new clinical document.
  */
 export async function uploadDocument(formData) {
   const response = await fetch(`${API_BASE_URL}/api/v1/documents/upload`, {
     method: "POST",
-    headers: getAuthHeaders(true), // True for multipart
+    headers: getAuthHeaders(true),
     body: formData,
   });
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.detail || "Document upload failed");
-  }
-  return data;
+  return handleApiResponse(response, "Failed to upload document");
 }
 
 /**
- * List documents with multi-parameter filtering and search.
+ * Fetch paginated list of clinical documents.
  */
 export async function getDocuments({
   page = 1,
@@ -200,26 +202,29 @@ export async function getDocuments({
   documentType = null,
   status = null,
   search = "",
+  isActive = true,
 } = {}) {
-  let url = `${API_BASE_URL}/api/v1/documents?page=${page}&per_page=${perPage}`;
-  if (patientId) url += `&patient_id=${patientId}`;
-  if (documentType && documentType !== "all") url += `&document_type=${documentType}`;
-  if (status && status !== "all") url += `&status=${status}`;
-  if (search) url += `&search=${encodeURIComponent(search)}`;
+  const params = new URLSearchParams({
+    page: String(page),
+    per_page: String(perPage),
+  });
 
-  const response = await fetch(url, {
+  if (patientId) params.append("patient_id", patientId);
+  if (documentType && documentType !== "all") params.append("document_type", documentType);
+  if (status) params.append("status", status);
+  if (search) params.append("search", search);
+  if (isActive !== null) params.append("is_active", String(isActive));
+
+  const response = await fetch(`${API_BASE_URL}/api/v1/documents?${params.toString()}`, {
     method: "GET",
     headers: getAuthHeaders(),
   });
 
-  if (!response.ok) {
-    throw new Error("Failed to fetch documents");
-  }
-  return response.json();
+  return handleApiResponse(response, "Failed to fetch documents");
 }
 
 /**
- * Get document metadata by ID.
+ * Fetch metadata for a single clinical document.
  */
 export async function getDocument(documentId) {
   const response = await fetch(`${API_BASE_URL}/api/v1/documents/${documentId}`, {
@@ -227,10 +232,7 @@ export async function getDocument(documentId) {
     headers: getAuthHeaders(),
   });
 
-  if (!response.ok) {
-    throw new Error("Failed to fetch document metadata");
-  }
-  return response.json();
+  return handleApiResponse(response, "Failed to fetch document metadata");
 }
 
 /**
@@ -246,6 +248,19 @@ export function getDocumentFileUrl(documentId) {
 }
 
 /**
+ * Trigger OCR text extraction on a clinical document.
+ * POST /api/v1/documents/{documentId}/ocr
+ */
+export async function triggerDocumentOcr(documentId) {
+  const response = await fetch(`${API_BASE_URL}/api/v1/documents/${documentId}/ocr`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
+  return handleApiResponse(response, "OCR extraction failed");
+}
+
+/**
  * Update document metadata or processing status.
  */
 export async function updateDocument(documentId, updateData) {
@@ -255,11 +270,7 @@ export async function updateDocument(documentId, updateData) {
     body: JSON.stringify(updateData),
   });
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.detail || "Failed to update document");
-  }
-  return data;
+  return handleApiResponse(response, "Failed to update document");
 }
 
 /**
@@ -271,8 +282,5 @@ export async function deleteDocument(documentId) {
     headers: getAuthHeaders(),
   });
 
-  if (!response.ok) {
-    throw new Error("Failed to delete document");
-  }
-  return response.json();
+  return handleApiResponse(response, "Failed to delete document");
 }

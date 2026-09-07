@@ -1,12 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
-from app.db.session import get_db
-from app.schemas.user import UserCreate, UserLogin, UserResponse, Token
-from app.services.auth_service import register_user, authenticate_user
-from app.core.security import create_access_token
 from app.api.deps import get_current_user
+from app.core.rate_limit import limiter
+from app.core.security import create_access_token
+from app.db.session import get_db
 from app.models.user import User
+from app.schemas.user import Token, UserCreate, UserLogin, UserResponse
+from app.services.auth_service import authenticate_user, register_user
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -17,16 +18,18 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
     status_code=status.HTTP_201_CREATED,
     summary="Register a new user",
 )
-def register(user_data: UserCreate, db: Session = Depends(get_db)):
+@limiter.limit("5/15minute")
+def register(
+    request: Request,
+    user_data: UserCreate,
+    db: Session = Depends(get_db),
+):
     """
-    Create a new user account.
-
-    - Validates the input (email format, password length, role).
-    - Checks if the email is already taken.
-    - Hashes the password with bcrypt.
-    - Stores the user in the database.
-    - Returns the user profile (without password).
+    Create a new user account with strict rate limiting (max 5 per 15 mins per IP).
+    Enforces staff role on public registration to prevent privilege escalation.
     """
+    # Defensive enforcement: public registrations can only create 'staff' accounts
+    user_data.role = "staff"
     try:
         user = register_user(db, user_data)
     except ValueError as e:
@@ -42,14 +45,14 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
     response_model=Token,
     summary="Login and receive JWT token",
 )
-def login(login_data: UserLogin, db: Session = Depends(get_db)):
+@limiter.limit("5/15minute")
+def login(
+    request: Request,
+    login_data: UserLogin,
+    db: Session = Depends(get_db),
+):
     """
-    Authenticate with email and password.
-
-    - Finds the user by email.
-    - Verifies the password against the stored bcrypt hash.
-    - If valid, creates a JWT token containing the user's ID.
-    - Returns the token for use in subsequent requests.
+    Authenticate with email and password (max 5 attempts per 15 mins per IP).
     """
     user = authenticate_user(db, login_data.email, login_data.password)
     if not user:
@@ -69,11 +72,12 @@ def login(login_data: UserLogin, db: Session = Depends(get_db)):
     response_model=UserResponse,
     summary="Get current user profile",
 )
-def get_me(current_user: User = Depends(get_current_user)):
+@limiter.limit("60/minute")
+def get_me(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
     """
     Return the profile of the currently authenticated user.
-
-    This is a protected route — it requires a valid JWT token
-    in the Authorization header: `Authorization: Bearer <token>`.
     """
     return current_user

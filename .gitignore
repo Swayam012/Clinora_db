@@ -1,4 +1,27 @@
-# Python
+# ============================================
+# Root .gitignore — Clinora
+# ============================================
+
+# Environment variables & secrets (CRITICAL)
+.env
+.env.*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
+
+# Uploaded patient records & clinical files (HIPAA / Privacy)
+uploads/
+backend/uploads/
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.tiff
+*.webp
+
+# Python artifacts
 __pycache__/
 *.py[cod]
 *$py.class
@@ -22,9 +45,8 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# Environments
-.env
-.venv
+# Virtual environments
+.venv/
 env/
 venv/
 ENV/
@@ -40,11 +62,18 @@ yarn-error.log*
 .oxlintcache
 .vite/
 dist/
+dist-ssr/
+
+# Logs & temporary data
+*.log
+logs/
+scratch/
 
 # OS / IDE
 .DS_Store
 Thumbs.db
-.vscode/
+.vscode/*
+!.vscode/extensions.json
 .idea/
 *.swp
 *.swo

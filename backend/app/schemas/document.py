@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
-from typing import Optional, List, Any, Dict
-from pydantic import BaseModel, Field
+from typing import Any, Dict, List, Optional
+from pydantic import BaseModel, Field, field_validator
 
 
 class DocumentBase(BaseModel):
@@ -11,6 +11,14 @@ class DocumentBase(BaseModel):
         pattern="^(prescription|lab_report|clinical_note|discharge_summary|other)$",
         examples=["lab_report"],
     )
+
+    @field_validator("title")
+    @classmethod
+    def sanitize_title(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Document title cannot be blank")
+        return v
 
 
 class DocumentCreate(DocumentBase):
@@ -30,6 +38,16 @@ class DocumentUpdate(BaseModel):
     ocr_text: Optional[str] = None
     extracted_data: Optional[Dict[str, Any]] = None
     is_active: Optional[bool] = None
+
+    @field_validator("title")
+    @classmethod
+    def sanitize_title(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        v = v.strip()
+        if not v:
+            raise ValueError("Document title cannot be blank")
+        return v
 
 
 class DocumentResponse(DocumentBase):

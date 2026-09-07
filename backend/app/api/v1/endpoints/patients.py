@@ -1,12 +1,19 @@
 import uuid
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
-from app.db.session import get_db
 from app.api.deps import get_current_user
+from app.core.rate_limit import limiter
+from app.db.session import get_db
 from app.models.user import User
-from app.schemas.patient import PatientCreate, PatientUpdate, PatientResponse, PatientListResponse
+from app.schemas.patient import (
+    PatientCreate,
+    PatientListResponse,
+    PatientResponse,
+    PatientUpdate,
+)
 from app.services import patient_service
 
 router = APIRouter(prefix="/patients", tags=["Patients"])
@@ -18,13 +25,15 @@ router = APIRouter(prefix="/patients", tags=["Patients"])
     status_code=status.HTTP_201_CREATED,
     summary="Create a new patient",
 )
+@limiter.limit("30/minute")
 def create_patient(
+    request: Request,
     patient_in: PatientCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
-    Registers a new patient and assigns an automatic structured ID (e.g. PAT-2026-00001).
+    Registers a new patient and assigns an automatic structured ID (max 30/min per IP).
     """
     patient = patient_service.create_new_patient(
         db=db,
@@ -39,7 +48,9 @@ def create_patient(
     response_model=PatientListResponse,
     summary="List patients with search and pagination",
 )
+@limiter.limit("120/minute")
 def get_patients(
+    request: Request,
     page: int = Query(1, ge=1, description="Page number"),
     per_page: int = Query(20, ge=1, le=100, description="Items per page"),
     search: Optional[str] = Query(None, description="Search by name, ID, phone, or email"),
@@ -64,7 +75,9 @@ def get_patients(
     response_model=PatientResponse,
     summary="Get patient by ID",
 )
+@limiter.limit("120/minute")
 def get_patient(
+    request: Request,
     patient_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -86,7 +99,9 @@ def get_patient(
     response_model=PatientResponse,
     summary="Update patient information",
 )
+@limiter.limit("30/minute")
 def update_patient(
+    request: Request,
     patient_id: uuid.UUID,
     patient_in: PatientUpdate,
     db: Session = Depends(get_db),
@@ -109,7 +124,9 @@ def update_patient(
     response_model=PatientResponse,
     summary="Soft delete a patient",
 )
+@limiter.limit("30/minute")
 def delete_patient(
+    request: Request,
     patient_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),

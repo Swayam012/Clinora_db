@@ -15,6 +15,7 @@ from .document_service import (
     modify_document,
     remove_document,
 )
+from .ocr_service import process_document_ocr
 
 __all__ = [
     "register_user",
@@ -31,4 +32,5 @@ __all__ = [
     "get_document_file_path",
     "modify_document",
     "remove_document",
+    "process_document_ocr",
 ]

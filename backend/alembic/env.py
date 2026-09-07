@@ -16,10 +16,14 @@ if config.config_file_name is not None:
 
 # Import our SQLAlchemy Base and all models so Alembic can detect tables.
 # Every new model file must be imported here for autogenerate to work.
+from app.core.config import settings
 from app.db.session import Base
 from app.models.user import User  # noqa: F401
 from app.models.patient import Patient  # noqa: F401
 from app.models.document import Document  # noqa: F401
+
+# Dynamically override sqlalchemy.url from Pydantic Settings
+config.set_main_option("sqlalchemy.url", settings.get_database_url())
 
 target_metadata = Base.metadata
 

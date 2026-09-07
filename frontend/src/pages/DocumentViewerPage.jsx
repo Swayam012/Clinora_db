@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { getDocument, getDocumentFileUrl } from '../services/api';
+import { getDocument, getDocumentFileUrl, triggerDocumentOcr } from '../services/api';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
@@ -17,6 +17,8 @@ import {
   Pill,
   ExternalLink,
   ShieldCheck,
+  ScanLine,
+  Loader2,
 } from 'lucide-react';
 
 export default function DocumentViewerPage() {
@@ -30,6 +32,10 @@ export default function DocumentViewerPage() {
   const [previewMode, setPreviewMode] = useState('file'); // 'file' | 'structured'
   const [isVerified, setIsVerified] = useState(false);
   const [fileError, setFileError] = useState(false);
+
+  // OCR state
+  const [ocrRunning, setOcrRunning] = useState(false);
+  const [ocrError, setOcrError] = useState('');
 
   const [blobUrl, setBlobUrl] = useState(null);
   const [blobLoading, setBlobLoading] = useState(false);
@@ -307,11 +313,85 @@ export default function DocumentViewerPage() {
             </h2>
             <div className="flex items-center gap-2">
               <span className="font-mono text-[11px] text-slate-400">ID: {docIdFormatted}</span>
-              <Badge variant={isVerified ? 'mint' : document?.status === 'processed' ? 'mint' : 'amber'}>
-                {isVerified ? 'Verified ✓' : document?.status === 'processed' ? 'AI Processed' : 'Uploaded'}
+              <Badge variant={isVerified ? 'mint' : document?.status === 'processed' ? 'mint' : document?.status === 'processing' ? 'blue' : 'amber'}>
+                {isVerified ? 'Verified ✓' : document?.status === 'processed' ? 'OCR Complete' : document?.status === 'processing' ? 'Processing...' : 'Uploaded'}
               </Badge>
             </div>
           </div>
+
+          {/* OCR Action Bar */}
+          {document?.status !== 'processed' && (
+            <Card className="p-4 border-brand-purple/20 bg-gradient-to-r from-brand-purple/[0.08] to-slate-900/60">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-purple/20 text-brand-lavender border border-brand-purple/30">
+                    <ScanLine className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-white">OCR Text Extraction</p>
+                    <p className="text-[11px] text-slate-400">
+                      {ocrRunning ? 'Scanning document with Tesseract engine...' : 'Extract text from this clinical document using OCR'}
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  variant="coral"
+                  size="sm"
+                  className="text-xs font-semibold"
+                  disabled={ocrRunning}
+                  onClick={async () => {
+                    setOcrRunning(true);
+                    setOcrError('');
+                    try {
+                      const updated = await triggerDocumentOcr(document.id);
+                      setDocument((prev) => ({ ...prev, ...updated }));
+                    } catch (err) {
+                      setOcrError(err.message || 'OCR extraction failed');
+                    } finally {
+                      setOcrRunning(false);
+                    }
+                  }}
+                >
+                  {ocrRunning ? (
+                    <>
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                      Running OCR...
+                    </>
+                  ) : (
+                    <>
+                      <ScanLine className="mr-1.5 h-3.5 w-3.5" />
+                      Run OCR Extraction
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {ocrError && (
+                <div className="mt-3 rounded-lg border border-red-500/20 bg-red-500/10 p-2.5 text-xs text-red-400">
+                  {ocrError}
+                </div>
+              )}
+            </Card>
+          )}
+
+          {/* OCR Extracted Text Panel (shown when text exists) */}
+          {document?.ocr_text && (
+            <Card className="p-4 space-y-2.5 border-emerald-500/20">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-bold text-white">
+                  <FileText className="h-4 w-4 text-emerald-400" />
+                  <span>Extracted OCR Text</span>
+                </div>
+                <Badge variant="mint">{document.ocr_text.length.toLocaleString()} chars</Badge>
+              </div>
+              <div className="max-h-48 overflow-y-auto rounded-lg border border-white/[0.08] bg-slate-950/80 p-3">
+                <pre className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap font-sans">
+                  {document.ocr_text}
+                </pre>
+              </div>
+            </Card>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             {/* 1. Patient Info Card */}
@@ -340,12 +420,14 @@ export default function DocumentViewerPage() {
               <div className="text-xs text-slate-300 space-y-1">
                 <div><span className="text-slate-500">Category:</span> {document?.document_type?.replace('_', ' ').toUpperCase()}</div>
                 <div className="text-slate-400 text-[11px] mt-1">
-                  {document?.extracted_data?.diagnosis || 'Ready for OCR & Clinical Extraction (Phase 5/6)'}
+                  {document?.extracted_data?.diagnosis || (document?.ocr_text ? 'OCR text extracted — structured extraction available in Phase 6' : 'Run OCR to extract text first')}
                 </div>
               </div>
               <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1">
                 <span>AI Confidence</span>
-                <span className="font-semibold text-brand-lavender">Phase 5/6 Ready</span>
+                <span className={`font-semibold ${document?.ocr_text ? 'text-emerald-400' : 'text-brand-lavender'}`}>
+                  {document?.ocr_text ? 'Text Extracted ✓' : 'Awaiting OCR'}
+                </span>
               </div>
             </Card>
 
@@ -356,11 +438,13 @@ export default function DocumentViewerPage() {
                 <span>Symptoms & Notes</span>
               </div>
               <div className="text-xs text-slate-400 text-[11px] leading-relaxed">
-                {document?.extracted_data?.symptoms || 'Awaiting automated text extraction pipeline from scanned document.'}
+                {document?.extracted_data?.symptoms || (document?.ocr_text ? 'OCR complete — clinical symptom extraction available in Phase 6' : 'Run OCR extraction to begin text analysis.')}
               </div>
               <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1">
                 <span>Extraction Status</span>
-                <span className="font-semibold text-slate-400">Queued</span>
+                <span className={`font-semibold ${document?.ocr_text ? 'text-emerald-400' : 'text-slate-400'}`}>
+                  {document?.ocr_text ? 'Text Ready' : 'Queued'}
+                </span>
               </div>
             </Card>
 
@@ -371,11 +455,13 @@ export default function DocumentViewerPage() {
                 <span>Medications & Dosage</span>
               </div>
               <div className="text-xs text-slate-400 text-[11px] leading-relaxed">
-                {document?.extracted_data?.medications || 'Prescribed pharmaceuticals, strength, and frequency will be extracted.'}
+                {document?.extracted_data?.medications || (document?.ocr_text ? 'OCR complete — medication extraction available in Phase 6' : 'Prescription data will be extracted after OCR.')}
               </div>
               <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1">
                 <span>Extraction Status</span>
-                <span className="font-semibold text-slate-400">Queued</span>
+                <span className={`font-semibold ${document?.ocr_text ? 'text-emerald-400' : 'text-slate-400'}`}>
+                  {document?.ocr_text ? 'Text Ready' : 'Queued'}
+                </span>
               </div>
             </Card>
 

@@ -1,10 +1,31 @@
-# Python-generated files
+# ============================================
+# Backend .gitignore — Clinora
+# ============================================
+
+# Environment variables & secrets (CRITICAL)
+.env
+.env.*
+.env.local
+!.env.example
+
+# Uploaded patient records & clinical files
+uploads/
+uploads/**/*
+
+# Python artifacts
 __pycache__/
 *.py[oc]
+*.pyc
 build/
 dist/
 wheels/
 *.egg-info
 
 # Virtual environments
-.venv
+.venv/
+env/
+venv/
+
+# Logs
+*.log
+logs/

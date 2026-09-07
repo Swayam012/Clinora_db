@@ -1,18 +1,19 @@
+import hashlib
 import os
 import uuid
-import hashlib
-import aiofiles
 from pathlib import Path
-from typing import Optional, Tuple, List
-from fastapi import UploadFile, HTTPException, status
+from typing import List, Optional, Tuple
+
+import aiofiles
+from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.document import Document
 from app.models.patient import Patient
 from app.models.user import User
-from app.schemas.document import DocumentResponse, DocumentListResponse, DocumentUpdate
 from app.repositories import document_repository, patient_repository
+from app.schemas.document import DocumentListResponse, DocumentResponse, DocumentUpdate
 
 
 def calculate_sha256(file_bytes: bytes) -> str:
@@ -20,6 +21,48 @@ def calculate_sha256(file_bytes: bytes) -> str:
     hasher = hashlib.sha256()
     hasher.update(file_bytes)
     return hasher.hexdigest()
+
+
+def detect_mime_type_from_magic_bytes(content: bytes) -> Optional[str]:
+    """
+    Inspects leading file bytes to determine real MIME type.
+    Prevents content spoofing attacks (e.g. uploading .exe or .html as .pdf).
+    """
+    if len(content) < 8:
+        return None
+
+    # PDF: %PDF- (hex: 25 50 44 46 2D)
+    if content.startswith(b"%PDF-"):
+        return "application/pdf"
+
+    # PNG: \x89PNG\r\n\x1a\n (hex: 89 50 4E 47 0D 0A 1A 0A)
+    if content.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+
+    # JPEG: \xFF\xD8\xFF
+    if content.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+
+    # TIFF: II*\x00 (little endian) or MM\x00* (big endian)
+    if content.startswith(b"II*\x00") or content.startswith(b"MM\x00*"):
+        return "image/tiff"
+
+    # WebP: starts with RIFF and has WEBP at bytes 8-12
+    if len(content) >= 12 and content.startswith(b"RIFF") and content[8:12] == b"WEBP":
+        return "image/webp"
+
+    return None
+
+
+ALLOWED_EXTENSIONS_MAP = {
+    ".pdf": "application/pdf",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".tiff": "image/tiff",
+    ".tif": "image/tiff",
+    ".webp": "image/webp",
+}
 
 
 def map_document_to_response(doc: Document) -> DocumentResponse:
@@ -60,7 +103,8 @@ async def save_and_register_document(
     current_user: Optional[User] = None,
 ) -> DocumentResponse:
     """
-    Validates, writes file to disk, computes checksum, and creates database record.
+    Securely validates magic bytes, verifies file extension, checks size bounds,
+    writes to isolated storage, computes SHA-256 checksum, and creates database record.
     """
     # 1. Verify patient exists
     patient = patient_repository.get_patient_by_id(db, patient_id)
@@ -70,58 +114,82 @@ async def save_and_register_document(
             detail=f"Patient with ID {patient_id} not found",
         )
 
-    # 2. Validate MIME Type
-    mime_type = file.content_type or "application/octet-stream"
-    if mime_type not in settings.ALLOWED_MIME_TYPES:
+    # 2. Validate filename and extension
+    original_filename = os.path.basename(file.filename or "unnamed_document")
+    ext = Path(original_filename).suffix.lower()
+    if ext not in ALLOWED_EXTENSIONS_MAP:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unsupported file type: {mime_type}. Allowed types: {', '.join(settings.ALLOWED_MIME_TYPES)}",
+            detail=f"Disallowed file extension '{ext}'. Allowed extensions: {', '.join(ALLOWED_EXTENSIONS_MAP.keys())}",
         )
 
-    # 3. Read content & Validate Size
-    content = await file.read()
-    file_size = len(content)
-    if file_size > settings.MAX_UPLOAD_SIZE_BYTES:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"File exceeds maximum allowed size of {settings.MAX_UPLOAD_SIZE_BYTES // (1024 * 1024)}MB",
-        )
+    # 3. Read content in chunks up to limit (prevents RAM exhaustion DoS)
+    chunk_size = 1024 * 1024  # 1 MB
+    chunks = []
+    total_size = 0
 
-    if file_size == 0:
+    while True:
+        chunk = await file.read(chunk_size)
+        if not chunk:
+            break
+        total_size += len(chunk)
+        if total_size > settings.MAX_UPLOAD_SIZE_BYTES:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"File exceeds maximum allowed size of {settings.MAX_UPLOAD_SIZE_BYTES // (1024 * 1024)}MB",
+            )
+        chunks.append(chunk)
+
+    if total_size == 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Uploaded file is empty (0 bytes).",
         )
 
-    # 4. Calculate Checksum
+    content = b"".join(chunks)
+
+    # 4. Validate Magic Bytes (real file signature inspection)
+    detected_mime = detect_mime_type_from_magic_bytes(content)
+    if not detected_mime or detected_mime not in settings.ALLOWED_MIME_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid file format or corrupted file signature. The file content does not match allowed clinical document types (PDF, PNG, JPEG, TIFF, WebP).",
+        )
+
+    expected_mime = ALLOWED_EXTENSIONS_MAP[ext]
+    if detected_mime != expected_mime and not (ext in [".jpg", ".jpeg"] and detected_mime == "image/jpeg"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"File extension '{ext}' does not match detected content format '{detected_mime}'.",
+        )
+
+    # 5. Calculate Checksum
     checksum = calculate_sha256(content)
 
-    # 5. Prepare Storage Directory & Filename
-    # Directory structure: uploads/documents/<patient_id>/<doc_uuid>_<clean_filename>
+    # 6. Prepare Storage Directory & Filename
     upload_base = Path(settings.UPLOAD_DIR) / str(patient_id)
     upload_base.mkdir(parents=True, exist_ok=True)
 
     doc_uuid = uuid.uuid4()
-    original_filename = file.filename or f"doc_{doc_uuid}"
-    # Sanitize filename
-    safe_filename = "".join(c for c in original_filename if c.isalnum() or c in "._- ")
-    storage_filename = f"{doc_uuid.hex[:8]}_{safe_filename}"
+    # Safe storage name: strictly doc_uuid.hex + sanitized ext, preventing any path traversal or script execution
+    safe_clean_name = "".join(c for c in Path(original_filename).stem if c.isalnum() or c in "._- ")[:50]
+    storage_filename = f"{doc_uuid.hex}_{safe_clean_name}{ext}"
     file_path = upload_base / storage_filename
 
-    # 6. Write File asynchronously
+    # 7. Write File asynchronously
     async with aiofiles.open(file_path, "wb") as f:
         await f.write(content)
 
-    # 7. Create DB Record
+    # 8. Create DB Record
     uploaded_by_id = current_user.id if current_user else None
     created_doc = document_repository.create_document(
         db=db,
         patient_id=patient_id,
-        title=title,
+        title=title.strip(),
         file_name=original_filename,
         file_path=str(file_path.as_posix()),
-        file_size=file_size,
-        mime_type=mime_type,
+        file_size=total_size,
+        mime_type=detected_mime,
         document_type=document_type,
         status="uploaded",
         checksum=checksum,

@@ -22,22 +22,26 @@ def get_db() -> Generator:
     finally:
         db.close()
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 def check_db_connection() -> dict:
     """
     Safely tests PostgreSQL connection without throwing an unhandled exception.
-    Returns status dict containing connectivity boolean and message/error details.
+    Returns a sanitized status dict without exposing internal server, port, or DB credentials.
     """
     try:
         with engine.connect() as connection:
             connection.execute(text("SELECT 1"))
             return {
                 "connected": True,
-                "message": "Database connection successful",
-                "database_url": database_url.split("@")[-1]  # Hide credentials
+                "status": "operational",
             }
     except Exception as e:
+        logger.error(f"Database health check failed: {e}")
         return {
             "connected": False,
-            "message": f"Database unreachable: {str(e)}",
-            "database_url": database_url.split("@")[-1]
+            "status": "unavailable",
         }

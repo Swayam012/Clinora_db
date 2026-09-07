@@ -38,6 +38,11 @@ class Settings(BaseSettings):
         "image/webp",
     ]
 
+    # OCR Engine Configuration
+    TESSERACT_CMD: str = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+    OCR_DPI: int = 300           # DPI for rendering PDF pages to images
+    OCR_CONFIDENCE_THRESHOLD: float = 30.0  # minimum Tesseract mean confidence %
+
     def get_database_url(self) -> str:
         if self.DATABASE_URL:
             return self.DATABASE_URL
