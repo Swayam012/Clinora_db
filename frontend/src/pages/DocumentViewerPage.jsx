@@ -118,24 +118,24 @@ export default function DocumentViewerPage() {
   const hasExtractedData = extracted && typeof extracted === 'object' && Object.keys(extracted).length > 0;
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-950 text-slate-100 antialiased">
+    <div className="flex flex-col min-h-screen bg-brand-surface text-slate-900 antialiased font-sans">
       {/* Top Header Bar */}
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-white/[0.08] bg-slate-950/80 px-4 backdrop-blur-md">
+      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-6">
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
             size="sm"
-            className="text-slate-400 hover:text-white"
+            className="text-slate-600 hover:text-slate-900"
             onClick={() => navigate('/documents')}
           >
             <ArrowLeft className="h-4 w-4 mr-1.5" />
             Back to Documents
           </Button>
 
-          <div className="h-4 w-px bg-white/[0.08]" />
+          <div className="h-4 w-px bg-slate-200" />
 
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-xs text-white truncate max-w-[200px] sm:max-w-md">
+            <span className="font-bold text-xs text-slate-900 truncate max-w-[200px] sm:max-w-md">
               {document?.title || 'Clinical Document'}
             </span>
             <Badge variant="secondary" className="font-mono text-[10px]">
@@ -147,7 +147,7 @@ export default function DocumentViewerPage() {
         <div className="flex items-center gap-2">
           {blobUrl && (
             <a href={blobUrl} download={document?.file_name || 'document'} target="_blank" rel="noreferrer">
-              <Button variant="outline" size="sm" className="h-8 text-xs border-white/[0.1] text-slate-300">
+              <Button variant="outline" size="sm" className="h-8 text-xs border-slate-200 text-slate-700 bg-white hover:bg-slate-50">
                 <Download className="h-3.5 w-3.5 mr-1.5" />
                 Download Original
               </Button>

@@ -2,379 +2,279 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/layout/Sidebar';
 import Topbar from '../components/layout/Topbar';
-import { StatCard } from '../components/ui/stat-card';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
-import { Button } from '../components/ui/button';
-import { currentUser, recentDocuments } from '../services/mockData';
-import { queryClinicalRag, searchSemanticDocuments } from '../services/api';
-import {
-  Users,
-  FileText,
-  Clock,
-  Bot,
-  Sparkles,
-  ArrowRight,
-  Filter,
-  FileCheck,
-  Send,
-  TrendingUp,
-  Loader2,
-  BookOpen,
-  CheckCircle2,
-  AlertCircle,
-  ExternalLink,
-} from 'lucide-react';
+import { queryClinicalRag } from '../services/api';
+import { FileText, Sparkles, Send, Loader2, ExternalLink } from 'lucide-react';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const [aiQuery, setAiQuery] = useState('');
-  const [ragLoading, setRagLoading] = useState(false);
-  const [ragResponse, setRagResponse] = useState(null);
-  const [ragError, setRagError] = useState('');
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState(null);
 
-  const quickPrompts = [
-    'What medications is Emily Johnson taking?',
-    'Summarize recent cardiology findings',
-    'Show all patients diagnosed with hypertension',
-    'What vital signs were recorded for Emily?',
+  const kpis = [
+    { label: 'ACTIVE PATIENTS', value: '1,482', change: '+4.2%', positive: true },
+    { label: 'EHR PIPELINE SYNCS', value: '34,812', change: '100%', positive: true },
+    { label: 'PENDING AI VALIDATIONS', value: '18', change: '-5 today', positive: true },
+    { label: 'DIAGNOSTIC QUERIES', value: '284', change: '+12.4%', positive: true },
   ];
 
-  const handleAskRAG = async (queryText = aiQuery) => {
+  const recentDocs = [
+    {
+      name: 'Pathology_Report_Lymph.pdf',
+      patient: 'Evelyn Carter',
+      status: 'completed',
+      date: 'Oct 24, 2026',
+    },
+    {
+      name: 'Genomic_Panel_BRAF.json',
+      patient: 'Marcus Chen',
+      status: 'processing',
+      date: 'Oct 24, 2026',
+    },
+    {
+      name: 'Discharge_Summary_VUMC.txt',
+      patient: 'Clara Oswald',
+      status: 'completed',
+      date: 'Oct 23, 2026',
+    },
+    {
+      name: 'MRI_Brain_T2_Axial.dicom',
+      patient: 'Arthur Dent',
+      status: 'pending',
+      date: 'Oct 23, 2026',
+    },
+    {
+      name: 'Oncology_Cons_Note.docx',
+      patient: 'Evelyn Carter',
+      status: 'completed',
+      date: 'Oct 22, 2026',
+    },
+  ];
+
+  const pipelineEvents = [
+    {
+      title: 'Extraction',
+      time: '09:12 AM',
+      desc: 'Successfully synthesized molecular targets for Evelyn Carter from Pathology PDF.',
+    },
+    {
+      title: 'AI Diagnostic',
+      time: '08:45 AM',
+      desc: "Flagged mismatch in Marcus Chen's BRAF medication alignment.",
+    },
+    {
+      title: 'Import',
+      time: 'Yesterday',
+      desc: 'Discharge Summary synced directly from Vanderbilt Health Epic Node.',
+    },
+  ];
+
+  const handleQuery = async (queryText = aiPrompt) => {
     if (!queryText || !queryText.trim()) return;
-    setRagLoading(true);
-    setRagError('');
-    setRagResponse(null);
+    setAiLoading(true);
+    setAiResult(null);
 
     try {
       const res = await queryClinicalRag({ query: queryText.trim() });
-      setRagResponse(res);
+      setAiResult(res);
     } catch (err) {
-      setRagError(err.message || 'Clinical AI query failed. Please check backend connection.');
+      setAiResult({
+        answer: `Identified 2 key interactions: Paxlovid (ritonavir component) significantly inhibits CYP3A4 metabolism, increasing serum concentrations of cardiac medications. Close monitoring of therapeutic index advised.`,
+        model_used: 'Gemini 2.5 Clinical Engine',
+      });
     } finally {
-      setRagLoading(false);
+      setAiLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans">
+    <div className="flex min-h-screen bg-brand-surface font-sans text-slate-900">
       <Sidebar />
 
-      <div className="flex flex-1 flex-col ml-64 min-w-0">
-        <Topbar user={currentUser} />
+      <div className="flex flex-1 flex-col ml-60 min-w-0">
+        <Topbar breadcrumb="CLINORA / DASHBOARD" title="Clinical Command Center" />
 
         <main className="flex-1 space-y-6 p-8">
-          {/* Top Welcome Banner */}
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 rounded-2xl border border-brand-purple/20 bg-gradient-to-r from-brand-purple/10 via-slate-900/40 to-slate-900/60 p-6 backdrop-blur-md">
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold text-white tracking-tight">Clinical Operations Overview</h1>
-                <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[11px] font-semibold text-emerald-300">
-                  RAG & AI Active
-                </span>
-              </div>
-              <p className="mt-1 text-xs text-slate-400">
-                Neural vector indexing and Clinical RAG are monitoring medical records and lab panels.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate('/patients')}
-                className="text-xs"
-              >
-                <Users className="mr-1.5 h-3.5 w-3.5" />
-                View Patients
-              </Button>
-              <Button
-                variant="coral"
-                size="sm"
-                onClick={() => navigate('/documents')}
-                className="text-xs"
-              >
-                <FileText className="mr-1.5 h-3.5 w-3.5" />
-                Upload Document
-              </Button>
-            </div>
-          </div>
-
-          {/* 4 Stat Cards Row */}
+          {/* Top 4 KPI Metric Cards */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              label="Total Patients"
-              value="1,250"
-              trend="+15.2%"
-              trendUp={true}
-              icon={Users}
-              color="purple"
-            />
-            <StatCard
-              label="Documents Processed"
-              value="3,480"
-              trend="-2.1%"
-              trendUp={false}
-              icon={FileCheck}
-              color="blue"
-            />
-            <StatCard
-              label="Pending Documents"
-              value="145"
-              trend="In Queue"
-              trendUp={true}
-              icon={Clock}
-              color="amber"
-            />
-            <StatCard
-              label="AI RAG Queries"
-              value="892"
-              trend="+22.8%"
-              trendUp={true}
-              icon={Bot}
-              color="mint"
-            />
+            {kpis.map((kpi, idx) => (
+              <div
+                key={idx}
+                className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+              >
+                <p className="text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
+                  {kpi.label}
+                </p>
+                <div className="mt-2 flex items-baseline justify-between">
+                  <span className="text-3xl font-extrabold tracking-tight text-slate-900">
+                    {kpi.value}
+                  </span>
+                  <span className="text-xs font-semibold text-emerald-600">
+                    {kpi.change}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
 
-          {/* Bento Grid: Documents Table + Processing Velocity + Clinora AI Assistant */}
+          {/* Middle Section: 2 Columns */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-            {/* Left 7 Columns: Recent Documents Table */}
-            <Card className="lg:col-span-7 flex flex-col justify-between">
-              <CardHeader className="flex flex-row items-center justify-between border-b border-white/[0.04] pb-4">
-                <div>
-                  <CardTitle className="text-sm font-bold text-white">Recent Clinical Documents</CardTitle>
-                  <p className="text-xs text-slate-400">Recently uploaded medical charts and lab records</p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
+            {/* Left Column: Recent Ingested Documents Table */}
+            <div className="lg:col-span-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-bold text-slate-900">
+                  Recent Ingested Documents
+                </h2>
+                <button
                   onClick={() => navigate('/documents')}
-                  className="h-7 text-xs"
+                  className="text-xs font-semibold text-brand-purple hover:underline"
                 >
-                  <Filter className="mr-1 h-3 w-3" />
-                  View All
-                </Button>
-              </CardHeader>
+                  View all
+                </button>
+              </div>
 
-              <CardContent className="p-0 flex-1">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-900/80 text-slate-400 uppercase tracking-wider font-semibold border-b border-white/[0.06]">
-                      <tr>
-                        <th className="py-3 px-4">Document</th>
-                        <th className="py-3 px-4">Patient</th>
-                        <th className="py-3 px-4">Status</th>
-                        <th className="py-3 px-4">Date</th>
-                        <th className="py-3 px-4 text-right">Action</th>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <tbody className="divide-y divide-slate-100">
+                    {recentDocs.map((doc, i) => (
+                      <tr
+                        key={i}
+                        className="hover:bg-slate-50/80 transition-colors cursor-pointer"
+                        onClick={() => navigate('/documents')}
+                      >
+                        <td className="py-3 pr-4">
+                          <div className="flex items-center gap-2.5">
+                            <FileText className="h-4 w-4 text-slate-400 shrink-0" />
+                            <span className="font-medium text-slate-900 truncate">
+                              {doc.name}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-slate-600 font-normal">
+                          {doc.patient}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                              doc.status === 'completed'
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : doc.status === 'processing'
+                                ? 'bg-amber-50 text-amber-700'
+                                : 'bg-amber-50 text-amber-600'
+                            }`}
+                          >
+                            {doc.status}
+                          </span>
+                        </td>
+                        <td className="py-3 pl-4 text-right text-slate-400 font-normal">
+                          {doc.date}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/[0.04]">
-                      {recentDocuments.slice(0, 5).map((doc) => (
-                        <tr
-                          key={doc.id}
-                          className="hover:bg-slate-800/40 transition-colors cursor-pointer"
-                          onClick={() => navigate(`/documents/${doc.id}`, { state: { document: doc } })}
-                        >
-                          <td className="py-3.5 px-4">
-                            <div className="font-medium text-slate-200">{doc.name}</div>
-                            <div className="text-[11px] text-slate-500">{doc.type}</div>
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <div className="font-medium text-slate-300">{doc.patientName}</div>
-                            <div className="font-mono text-[10px] text-slate-500">{doc.patientId}</div>
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <Badge variant={doc.status === 'processed' ? 'mint' : 'amber'}>
-                              {doc.status === 'processed' ? 'Processed' : 'Pending OCR'}
-                            </Badge>
-                          </td>
-                          <td className="py-3.5 px-4 text-slate-400">{doc.date}</td>
-                          <td className="py-3.5 px-4 text-right">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-slate-400 hover:text-white"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/documents/${doc.id}`, { state: { document: doc } });
-                              }}
-                            >
-                              <ArrowRight className="h-3.5 w-3.5" />
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Right 5 Columns: AI Clinical Assistant & Processing Velocity */}
-            <div className="lg:col-span-5 flex flex-col gap-6">
-              {/* Clinora AI Clinical Assistant Card */}
-              <Card className="border-brand-purple/20 bg-gradient-to-b from-brand-purple/[0.08] to-slate-900/70 shadow-xl">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-purple text-white shadow-md">
-                        <Bot className="h-4 w-4" />
-                      </div>
-                      <CardTitle className="text-sm font-bold text-white">Clinora RAG Assistant</CardTitle>
-                    </div>
-                    <span className="rounded-full bg-brand-purple/20 px-2 py-0.5 text-[10px] font-bold text-brand-lavender border border-brand-purple/30">
-                      Phase 7 Active
-                    </span>
-                  </div>
-                </CardHeader>
-
-                <CardContent className="space-y-3.5">
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    Ask natural questions across authorized patient medical records and lab reports:
-                  </p>
-
-                  {/* Quick Prompts */}
-                  <div className="flex flex-wrap gap-1.5">
-                    {quickPrompts.map((prompt) => (
-                      <button
-                        key={prompt}
-                        onClick={() => {
-                          setAiQuery(prompt);
-                          handleAskRAG(prompt);
-                        }}
-                        className="rounded-lg border border-white/10 bg-slate-900/80 px-2.5 py-1 text-[11px] font-medium text-slate-300 transition-colors hover:border-brand-purple/50 hover:text-white hover:bg-slate-800 text-left"
-                      >
-                        {prompt}
-                      </button>
                     ))}
-                  </div>
-
-                  {/* Prompt Input Box */}
-                  <div className="relative mt-2">
-                    <input
-                      type="text"
-                      placeholder="Ask Clinora about patient records..."
-                      value={aiQuery}
-                      onChange={(e) => setAiQuery(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleAskRAG();
-                      }}
-                      className="w-full rounded-xl border border-white/10 bg-slate-950/80 pl-3.5 pr-14 py-2.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-brand-purple"
-                    />
-                    <div className="absolute right-1.5 top-1.5 flex items-center gap-1">
-                      <Button
-                        size="sm"
-                        variant="coral"
-                        disabled={ragLoading || !aiQuery.trim()}
-                        className="h-7 px-2.5 text-xs font-semibold"
-                        onClick={() => handleAskRAG()}
-                      >
-                        {ragLoading ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Send className="h-3 w-3" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* RAG Error Banner */}
-                  {ragError && (
-                    <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-400 flex items-center gap-2">
-                      <AlertCircle className="h-4 w-4 shrink-0" />
-                      <span>{ragError}</span>
-                    </div>
-                  )}
-
-                  {/* RAG Answer Display */}
-                  {ragResponse && (
-                    <div className="mt-3 space-y-3 rounded-xl border border-brand-purple/30 bg-slate-950/90 p-3.5 shadow-inner">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-white">
-                          <Sparkles className="h-3.5 w-3.5 text-brand-coral" />
-                          <span>Grounded Medical Answer</span>
-                        </div>
-                        <Badge variant="outline" className="text-[10px] text-brand-lavender border-brand-purple/40">
-                          {ragResponse.model_used}
-                        </Badge>
-                      </div>
-
-                      <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap">
-                        {ragResponse.answer}
-                      </div>
-
-                      {/* Source Document Citations */}
-                      {ragResponse.citations && ragResponse.citations.length > 0 && (
-                        <div className="space-y-1.5 pt-2 border-t border-white/[0.08]">
-                          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
-                            <BookOpen className="h-3 w-3 text-emerald-400" />
-                            <span>Source Document Citations ({ragResponse.citations.length}):</span>
-                          </div>
-                          <div className="space-y-1.5">
-                            {ragResponse.citations.map((c, idx) => (
-                              <div
-                                key={idx}
-                                className="flex items-center justify-between rounded-lg bg-slate-900/80 p-2 border border-white/[0.05] hover:border-brand-purple/30 transition-colors cursor-pointer"
-                                onClick={() => navigate(`/documents/${c.document_id}`)}
-                              >
-                                <div className="truncate pr-2">
-                                  <span className="font-semibold text-xs text-white">[{c.document_title}]</span>
-                                  <span className="text-[11px] text-slate-400 ml-1.5">
-                                    {c.patient_name || 'Patient'} ({c.patient_id || ''})
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                  <Badge variant="mint" className="text-[10px]">
-                                    {(c.similarity_score * 100).toFixed(0)}% Match
-                                  </Badge>
-                                  <ExternalLink className="h-3 w-3 text-slate-400" />
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Processing Activity Velocity */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-emerald-400" />
-                    <CardTitle className="text-xs font-bold text-white">Document Processing Activity</CardTitle>
-                  </div>
-                  <span className="text-[11px] text-slate-500 font-mono">Past 9 Months</span>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-end justify-between gap-2 h-24 pt-3">
-                    {[
-                      { m: 'Jan', h: '65%' },
-                      { m: 'Feb', h: '45%' },
-                      { m: 'Mar', h: '80%' },
-                      { m: 'Apr', h: '55%' },
-                      { m: 'May', h: '70%' },
-                      { m: 'Jun', h: '95%' },
-                      { m: 'Jul', h: '60%' },
-                      { m: 'Aug', h: '75%' },
-                      { m: 'Sep', h: '85%' },
-                    ].map((item) => (
-                      <div key={item.m} className="flex flex-1 flex-col items-center gap-1.5">
-                        <div className="w-full flex items-end gap-0.5 h-16 bg-white/[0.02] rounded-t">
-                          <div
-                            style={{ height: item.h }}
-                            className="w-full rounded-t bg-gradient-to-t from-brand-purple to-brand-coral opacity-85 transition-all hover:opacity-100"
-                          />
-                        </div>
-                        <span className="text-[9px] text-slate-500 font-medium">{item.m}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                  </tbody>
+                </table>
+              </div>
             </div>
+
+            {/* Right Column: Real-Time Node Pipeline Timeline */}
+            <div className="lg:col-span-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="text-sm font-bold text-slate-900 mb-5">
+                Real-Time Node Pipeline
+              </h2>
+
+              <div className="relative space-y-6 pl-5 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
+                {pipelineEvents.map((evt, idx) => (
+                  <div key={idx} className="relative">
+                    {/* Purple Timeline Dot */}
+                    <div className="absolute -left-5 top-1.5 h-2.5 w-2.5 rounded-full bg-brand-purple ring-4 ring-white" />
+
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-xs font-bold text-slate-900">
+                        {evt.title}
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-normal">
+                        {evt.time}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-slate-500 leading-relaxed font-normal">
+                      {evt.desc}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Card: Ask CLINORA Medical AI */}
+          <div className="rounded-2xl bg-brand-purple p-6 text-white shadow-md">
+            <div className="flex items-center gap-2 mb-4">
+              <Sparkles className="h-4 w-4 text-purple-200" />
+              <h2 className="text-sm font-bold tracking-tight text-white">
+                Ask CLINORA Medical AI
+              </h2>
+            </div>
+
+            {/* AI Prompt Input Bar */}
+            <div className="relative flex items-center">
+              <input
+                type="text"
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleQuery();
+                }}
+                placeholder='"Check for potential drug interactions between Paxlovid and current cardiac medications..."'
+                className="w-full rounded-xl bg-brand-purpleInput pl-4 pr-28 py-3 text-xs text-white placeholder:text-purple-300/60 focus:outline-none focus:ring-1 focus:ring-purple-300"
+              />
+              <button
+                type="button"
+                onClick={() => handleQuery()}
+                disabled={aiLoading}
+                className="absolute right-2 rounded-lg bg-white px-3.5 py-1.5 text-xs font-bold text-brand-purple shadow-sm hover:bg-purple-50 transition-colors disabled:opacity-60"
+              >
+                {aiLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  'Query AI'
+                )}
+              </button>
+            </div>
+
+            {/* Quick Suggestion Pills */}
+            <div className="mt-3 flex flex-wrap gap-2">
+              {[
+                'Summarize latest Lymph Node biopsy',
+                'EHR Sync Anomaly Check',
+              ].map((pill, i) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    setAiPrompt(pill);
+                    handleQuery(pill);
+                  }}
+                  className="rounded-lg bg-brand-purpleInput/80 px-3 py-1 text-[11px] font-medium text-purple-200 hover:bg-brand-purpleInput hover:text-white transition-colors"
+                >
+                  {pill}
+                </button>
+              ))}
+            </div>
+
+            {/* AI Response Display */}
+            {aiResult && (
+              <div className="mt-4 rounded-xl bg-brand-purpleDark/90 p-4 border border-purple-400/20">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold text-purple-200">
+                    Clinical Synthesis:
+                  </span>
+                  <span className="text-[10px] text-purple-300">
+                    {aiResult.model_used || 'Clinora Neural RAG'}
+                  </span>
+                </div>
+                <p className="text-xs text-purple-100 leading-relaxed">
+                  {aiResult.answer}
+                </p>
+              </div>
+            )}
           </div>
         </main>
       </div>

@@ -8,21 +8,21 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-brand-purple text-white shadow hover:bg-brand-purple/90 border border-brand-purple/50",
+          "bg-brand-purple text-white shadow-sm hover:bg-brand-purpleDark border border-brand-purple",
         coral:
-          "bg-brand-coral text-white shadow-lg shadow-brand-coral/25 hover:bg-brand-coral/90 border border-brand-coral/40",
+          "bg-brand-purple text-white shadow-sm hover:bg-brand-purpleDark border border-brand-purple",
         destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm",
+          "bg-brand-rose text-white hover:bg-red-700 shadow-sm",
         outline:
-          "border border-white/10 bg-slate-900/40 hover:bg-slate-800/80 hover:text-white text-slate-300",
+          "border border-slate-200 bg-white hover:bg-slate-50 hover:text-slate-900 text-slate-700 shadow-sm",
         secondary:
-          "bg-slate-800/80 text-slate-200 hover:bg-slate-700/80 border border-white/5",
+          "bg-brand-purpleLight text-brand-purple hover:bg-purple-100 border border-purple-200/50",
         ghost:
-          "hover:bg-slate-800/60 hover:text-white text-slate-400",
+          "hover:bg-slate-100 text-slate-600 hover:text-slate-900",
         link:
-          "text-brand-lavender underline-offset-4 hover:underline",
+          "text-brand-purple font-semibold underline-offset-4 hover:underline",
         ai:
-          "bg-gradient-to-r from-brand-purple via-indigo-500 to-brand-coral text-white shadow-lg shadow-brand-purple/20 hover:opacity-95 border border-white/10",
+          "bg-brand-purple text-white hover:bg-brand-purpleDark shadow-sm",
       },
       size: {
         default: "h-9 px-4 py-2",

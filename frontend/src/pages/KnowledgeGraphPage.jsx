@@ -96,24 +96,24 @@ export default function KnowledgeGraphPage() {
   );
 
   return (
-    <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans">
+    <div className="flex min-h-screen bg-brand-surface font-sans text-slate-900">
       <Sidebar />
 
-      <div className="flex flex-1 flex-col ml-64 min-w-0">
-        <Topbar user={currentUser} />
+      <div className="flex flex-1 flex-col ml-60 min-w-0">
+        <Topbar breadcrumb="CLINORA / KNOWLEDGE GRAPH" title="Clinical Entity Knowledge Graph" />
 
-        <main className="flex-1 p-6 flex flex-col gap-4 max-w-[1700px] mx-auto w-full">
+        <main className="flex-1 p-8 flex flex-col gap-4 max-w-[1700px] mx-auto w-full">
           {/* Top Control Bar */}
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 pb-3 border-b border-white/[0.06]">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 pb-3 border-b border-slate-200">
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold text-white tracking-tight">Clinical Knowledge Graph</h1>
-                <Badge variant="secondary" className="border-cyan-500/40 text-cyan-300 text-[10px]">
-                  Neo4j Schema
+                <h1 className="text-lg font-bold text-slate-900 tracking-tight">Interactive Knowledge Graph</h1>
+                <Badge variant="default" className="text-[10px]">
+                  Neo4j Graph Schema
                 </Badge>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Interactive relationship graph linking Patients, Diagnoses, Medications, Biomarkers, and Symptoms.
+              <p className="text-xs text-slate-500 mt-0.5">
+                Multi-modal relationship graph linking Patients, Diagnoses, Medications, Biomarkers, and Symptoms.
               </p>
             </div>
 
@@ -123,15 +123,15 @@ export default function KnowledgeGraphPage() {
                 <button
                   key={t.key}
                   onClick={() => setFilterType(t.key)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors shadow-xs ${
                     filterType === t.key
-                      ? 'bg-brand-purple/20 text-white border-brand-purple'
-                      : 'bg-slate-900 border-white/[0.08] text-slate-400 hover:text-white'
+                      ? 'bg-brand-purple text-white border-brand-purple'
+                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
                 >
                   <span
                     className="h-2 w-2 rounded-full"
-                    style={{ backgroundColor: t.color || '#A78BFA' }}
+                    style={{ backgroundColor: t.color || '#3B2C58' }}
                   />
                   <span>{t.label}</span>
                 </button>
@@ -142,7 +142,7 @@ export default function KnowledgeGraphPage() {
           {/* Graph Viewport + Detail Drawer */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1">
             {/* Graph Visualizer Panel */}
-            <Card className="lg:col-span-9 min-h-[620px] flex flex-col relative overflow-hidden bg-slate-950 border-white/[0.08]">
+            <div className="lg:col-span-9 min-h-[620px] flex flex-col relative overflow-hidden bg-white rounded-xl border border-slate-200 shadow-sm">
               {/* Top Search & Controls Overlay */}
               <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
                 <div className="relative">
@@ -152,28 +152,28 @@ export default function KnowledgeGraphPage() {
                     placeholder="Search node or code..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="h-8 rounded-lg border border-white/10 bg-slate-900/90 pl-8 pr-3 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-brand-purple w-48"
+                    className="h-8 rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-brand-purple w-48 shadow-xs"
                   />
                 </div>
               </div>
 
               {/* Zoom Controls Overlay */}
-              <div className="absolute top-4 right-4 z-10 flex items-center gap-1 bg-slate-900/90 border border-white/10 rounded-lg p-1">
+              <div className="absolute top-4 right-4 z-10 flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-1 shadow-xs">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 text-slate-400 hover:text-white"
+                  className="h-6 w-6 text-slate-600 hover:text-slate-900"
                   onClick={() => setZoomLevel((prev) => Math.min(prev + 0.15, 1.8))}
                 >
                   <ZoomIn className="h-3.5 w-3.5" />
                 </Button>
-                <span className="text-[10px] font-mono text-slate-400 px-1">
+                <span className="text-[10px] font-mono text-slate-600 px-1">
                   {(zoomLevel * 100).toFixed(0)}%
                 </span>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 text-slate-400 hover:text-white"
+                  className="h-6 w-6 text-slate-600 hover:text-slate-900"
                   onClick={() => setZoomLevel((prev) => Math.max(prev - 0.15, 0.6))}
                 >
                   <ZoomOut className="h-3.5 w-3.5" />
@@ -181,7 +181,7 @@ export default function KnowledgeGraphPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 text-slate-400 hover:text-white"
+                  className="h-6 w-6 text-slate-600 hover:text-slate-900"
                   onClick={() => {
                     setZoomLevel(1);
                     setFilterType('all');
@@ -193,7 +193,7 @@ export default function KnowledgeGraphPage() {
               </div>
 
               {/* SVG Force Layout Canvas */}
-              <div className="flex-1 w-full h-full min-h-[580px] flex items-center justify-center overflow-auto p-6 cursor-grab active:cursor-grabbing">
+              <div className="flex-1 w-full h-full min-h-[580px] flex items-center justify-center overflow-auto p-6 cursor-grab active:cursor-grabbing bg-slate-50/50">
                 <svg
                   width="100%"
                   height="100%"
@@ -203,8 +203,8 @@ export default function KnowledgeGraphPage() {
                 >
                   <defs>
                     <linearGradient id="edgeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#7C5CBF" stopOpacity="0.4" />
-                      <stop offset="100%" stopColor="#E8634B" stopOpacity="0.4" />
+                      <stop offset="0%" stopColor="#3B2C58" stopOpacity="0.3" />
+                      <stop offset="100%" stopColor="#7C5CBF" stopOpacity="0.3" />
                     </linearGradient>
                   </defs>
 
@@ -224,7 +224,7 @@ export default function KnowledgeGraphPage() {
                           y1={sourceNode.y}
                           x2={targetNode.x}
                           y2={targetNode.y}
-                          stroke="url(#edgeGrad)"
+                          stroke="#CBD5E1"
                           strokeWidth="2"
                           strokeDasharray="4 2"
                         />
@@ -234,17 +234,17 @@ export default function KnowledgeGraphPage() {
                           width="70"
                           height="16"
                           rx="4"
-                          fill="#0F0E24"
-                          stroke="rgba(255,255,255,0.1)"
+                          fill="#FFFFFF"
+                          stroke="#E2E8F0"
                         />
                         <text
                           x={midX}
                           y={midY + 3}
                           textAnchor="middle"
-                          fill="#A09CB5"
+                          fill="#475569"
                           fontSize="8"
                           fontFamily="sans-serif"
-                          fontWeight="600"
+                          fontWeight="700"
                         >
                           {edge.label}
                         </text>
@@ -267,7 +267,7 @@ export default function KnowledgeGraphPage() {
                         <circle
                           r={isSelected ? '32' : '26'}
                           fill={node.color}
-                          fillOpacity={isSelected ? '0.25' : '0.12'}
+                          fillOpacity={isSelected ? '0.2' : '0.08'}
                           stroke={node.color}
                           strokeWidth={isSelected ? '2.5' : '1.5'}
                           className="transition-all"
@@ -275,7 +275,7 @@ export default function KnowledgeGraphPage() {
                         {/* Core Circle */}
                         <circle
                           r="16"
-                          fill="#0A0A1A"
+                          fill="#FFFFFF"
                           stroke={node.color}
                           strokeWidth="2"
                         />
@@ -304,13 +304,14 @@ export default function KnowledgeGraphPage() {
                           width={node.label.length * 7 + 20}
                           height="18"
                           rx="9"
-                          fill="#12112A"
-                          stroke={isSelected ? node.color : 'rgba(255,255,255,0.1)'}
+                          fill="#FFFFFF"
+                          stroke={isSelected ? node.color : '#E2E8F0'}
+                          className="shadow-sm"
                         />
                         <text
                           textAnchor="middle"
                           y="36"
-                          fill="#F1F0F5"
+                          fill="#1E293B"
                           fontSize="9.5"
                           fontWeight="600"
                         >
@@ -321,13 +322,13 @@ export default function KnowledgeGraphPage() {
                   })}
                 </svg>
               </div>
-            </Card>
+            </div>
 
             {/* Right 3 Columns: Selected Node Inspector Drawer */}
-            <Card className="lg:col-span-3 p-4 flex flex-col justify-between border-white/[0.08] bg-slate-900/60 backdrop-blur-md">
+            <div className="lg:col-span-3 p-5 flex flex-col justify-between rounded-xl border border-slate-200 bg-white shadow-sm">
               {selectedNode ? (
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                     <div className="flex items-center gap-2">
                       <div
                         className="h-3 w-3 rounded-full"
@@ -348,11 +349,11 @@ export default function KnowledgeGraphPage() {
                   </div>
 
                   <div>
-                    <h3 className="text-base font-bold text-white">{selectedNode.label}</h3>
-                    <p className="text-xs text-slate-400 font-mono mt-0.5">{selectedNode.subtitle}</p>
+                    <h3 className="text-base font-bold text-slate-900">{selectedNode.label}</h3>
+                    <p className="text-xs text-slate-500 font-mono mt-0.5">{selectedNode.subtitle}</p>
                   </div>
 
-                  <div className="space-y-2.5 pt-2 border-t border-white/[0.06]">
+                  <div className="space-y-2.5 pt-2 border-t border-slate-100">
                     <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                       Connected Relationships
                     </span>
@@ -366,10 +367,10 @@ export default function KnowledgeGraphPage() {
                           return (
                             <div
                               key={idx}
-                              className="flex items-center justify-between p-2 rounded-lg bg-slate-950/70 border border-white/[0.05]"
+                              className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200/80"
                             >
-                              <span className="text-slate-300 font-medium">{otherNode?.label}</span>
-                              <Badge variant="outline" className="text-[9px] font-mono">
+                              <span className="text-slate-800 font-medium">{otherNode?.label}</span>
+                              <Badge variant="secondary" className="text-[9px] font-mono">
                                 {e.label}
                               </Badge>
                             </div>
@@ -380,21 +381,21 @@ export default function KnowledgeGraphPage() {
                 </div>
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-3">
-                  <div className="h-10 w-10 rounded-full bg-brand-purple/20 flex items-center justify-center text-brand-lavender">
+                  <div className="h-10 w-10 rounded-full bg-brand-purpleLight flex items-center justify-center text-brand-purple">
                     <Info className="h-5 w-5" />
                   </div>
-                  <h4 className="text-xs font-bold text-white">Select an Entity Node</h4>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                  <h4 className="text-xs font-bold text-slate-900">Select an Entity Node</h4>
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
                     Click on any Patient, Diagnosis, Medication, or Biomarker node to inspect its clinical links.
                   </p>
                 </div>
               )}
 
-              <div className="pt-3 border-t border-white/[0.06] text-[10px] text-slate-500 font-mono flex justify-between">
+              <div className="pt-3 border-t border-slate-100 text-[10px] text-slate-400 font-mono flex justify-between">
                 <span>Active Nodes: {filteredNodes.length}</span>
                 <span>Links: {visibleEdges.length}</span>
               </div>
-            </Card>
+            </div>
           </div>
         </main>
       </div>

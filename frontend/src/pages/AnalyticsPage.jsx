@@ -37,30 +37,30 @@ export default function AnalyticsPage() {
   ];
 
   return (
-    <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans">
+    <div className="flex min-h-screen bg-brand-surface font-sans text-slate-900">
       <Sidebar />
 
-      <div className="flex flex-1 flex-col ml-64 min-w-0">
-        <Topbar user={currentUser} />
+      <div className="flex flex-1 flex-col ml-60 min-w-0">
+        <Topbar breadcrumb="CLINORA / ANALYTICS" title="Clinical Intelligence Analytics" />
 
         <main className="flex-1 space-y-6 p-8 max-w-7xl mx-auto w-full">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2 border-b border-white/[0.06]">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2 border-b border-slate-200">
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold text-white tracking-tight">Clinical Intelligence Analytics</h1>
+                <h1 className="text-lg font-bold text-slate-900 tracking-tight">Clinical Performance & Telemetry</h1>
                 <Badge variant="mint" className="text-[10px]">
                   Real-time Telemetry
                 </Badge>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 AI extraction accuracy, OCR pipeline throughput, and clinical diagnosis distribution metrics.
               </p>
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1 text-xs text-slate-400 bg-slate-900 border border-white/10 px-3 py-1.5 rounded-lg">
-                <Calendar className="h-3.5 w-3.5 text-brand-lavender" />
+              <span className="flex items-center gap-1 text-xs text-slate-700 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-xs">
+                <Calendar className="h-3.5 w-3.5 text-brand-purple" />
                 <span>Last 30 Days</span>
               </span>
             </div>
@@ -68,63 +68,54 @@ export default function AnalyticsPage() {
 
           {/* 4 KPI Cards */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              label="OCR Mean Accuracy"
-              value="98.2%"
-              trend="+1.4%"
-              trendUp={true}
-              icon={ScanLine}
-              color="purple"
-            />
-            <StatCard
-              label="Avg Extraction Latency"
-              value="1.8s"
-              trend="-0.4s"
-              trendUp={true}
-              icon={Zap}
-              color="mint"
-            />
-            <StatCard
-              label="Structured Data Yield"
-              value="94.6%"
-              trend="+3.2%"
-              trendUp={true}
-              icon={FileCheck}
-              color="blue"
-            />
-            <StatCard
-              label="AI Verification Rate"
-              value="99.0%"
-              trend="100% Grounded"
-              trendUp={true}
-              icon={CheckCircle2}
-              color="coral"
-            />
+            {[
+              { label: 'OCR MEAN ACCURACY', value: '98.2%', change: '+1.4%' },
+              { label: 'AVG EXTRACTION LATENCY', value: '1.8s', change: '-0.4s' },
+              { label: 'STRUCTURED DATA YIELD', value: '94.6%', change: '+3.2%' },
+              { label: 'AI VERIFICATION RATE', value: '99.0%', change: '100% Grounded' },
+            ].map((kpi, idx) => (
+              <div
+                key={idx}
+                className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+              >
+                <p className="text-[11px] font-semibold tracking-wider text-slate-400 uppercase">
+                  {kpi.label}
+                </p>
+                <div className="mt-2 flex items-baseline justify-between">
+                  <span className="text-3xl font-extrabold tracking-tight text-slate-900">
+                    {kpi.value}
+                  </span>
+                  <span className="text-xs font-semibold text-emerald-600">
+                    {kpi.change}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
 
           {/* Bento Charts Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Left 7 Columns: Common Diagnoses Distribution */}
-            <Card className="lg:col-span-7 p-5 space-y-4">
-              <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+            <div className="lg:col-span-7 rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-brand-coral" />
-                  <CardTitle className="text-sm font-bold text-white">Top Extracted Clinical Diagnoses</CardTitle>
+                  <Activity className="h-4 w-4 text-brand-purple" />
+                  <h3 className="text-sm font-bold text-slate-900">Top Extracted Clinical Diagnoses</h3>
                 </div>
                 <span className="text-xs text-slate-400 font-mono">1,250 Patient Cohort</span>
               </div>
 
-              <div className="space-y-3.5 pt-1">
+              <div className="space-y-4 pt-1">
                 {diagnosisDistribution.map((d) => (
                   <div key={d.name} className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-medium text-slate-200">{d.name}</span>
+                      <span className="font-medium text-slate-800">{d.name}</span>
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-slate-400">{d.count} records</span>
-                        <span className="font-bold text-white w-8 text-right">{d.percent}%</span>
+                        <span className="font-bold text-slate-900 w-8 text-right">{d.percent}%</span>
                       </div>
                     </div>
-                    <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-white/[0.04]">
+                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                       <div
                         style={{ width: `${d.percent}%`, backgroundColor: d.color }}
                         className="h-full rounded-full transition-all duration-500"
@@ -133,36 +124,36 @@ export default function AnalyticsPage() {
                   </div>
                 ))}
               </div>
-            </Card>
+            </div>
 
             {/* Right 5 Columns: Departmental Throughput */}
-            <Card className="lg:col-span-5 p-5 space-y-4">
-              <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+            <div className="lg:col-span-5 rounded-xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4 text-brand-lavender" />
-                  <CardTitle className="text-sm font-bold text-white">Department Volume & Yield</CardTitle>
+                  <BarChart3 className="h-4 w-4 text-brand-purple" />
+                  <h3 className="text-sm font-bold text-slate-900">Department Volume & Yield</h3>
                 </div>
-                <Badge variant="outline" className="text-[10px]">Active</Badge>
+                <Badge variant="mint" className="text-[10px]">Active</Badge>
               </div>
 
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 {departmentVolumes.map((dept) => (
                   <div
                     key={dept.dept}
-                    className="flex items-center justify-between p-3 rounded-xl bg-slate-900/70 border border-white/[0.05]"
+                    className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 border border-slate-200/70"
                   >
                     <div>
-                      <div className="font-semibold text-xs text-white">{dept.dept}</div>
-                      <div className="text-[11px] text-slate-400">{dept.docs} documents processed</div>
+                      <div className="font-bold text-xs text-slate-900">{dept.dept}</div>
+                      <div className="text-[11px] text-slate-500">{dept.docs} documents processed</div>
                     </div>
                     <div className="text-right">
-                      <div className="text-xs font-bold text-emerald-400">{dept.rate}</div>
-                      <div className="text-[10px] text-slate-500 font-mono">Precision</div>
+                      <div className="text-xs font-bold text-emerald-600">{dept.rate}</div>
+                      <div className="text-[10px] text-slate-400 font-mono">Precision</div>
                     </div>
                   </div>
                 ))}
               </div>
-            </Card>
+            </div>
           </div>
         </main>
       </div>
