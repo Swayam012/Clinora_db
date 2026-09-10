@@ -7,6 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card'
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { currentUser, recentDocuments } from '../services/mockData';
+import { queryClinicalRag, searchSemanticDocuments } from '../services/api';
 import {
   Users,
   FileText,
@@ -17,20 +18,43 @@ import {
   Filter,
   FileCheck,
   Send,
-  Mic,
   TrendingUp,
+  Loader2,
+  BookOpen,
+  CheckCircle2,
+  AlertCircle,
+  ExternalLink,
 } from 'lucide-react';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const [aiQuery, setAiQuery] = useState('');
+  const [ragLoading, setRagLoading] = useState(false);
+  const [ragResponse, setRagResponse] = useState(null);
+  const [ragError, setRagError] = useState('');
 
   const quickPrompts = [
-    'List potential drug interactions',
-    'Summarize patient history',
-    'Compare recent lab results',
-    'Identify elevated risk factors',
+    'What medications is Emily Johnson taking?',
+    'Summarize recent cardiology findings',
+    'Show all patients diagnosed with hypertension',
+    'What vital signs were recorded for Emily?',
   ];
+
+  const handleAskRAG = async (queryText = aiQuery) => {
+    if (!queryText || !queryText.trim()) return;
+    setRagLoading(true);
+    setRagError('');
+    setRagResponse(null);
+
+    try {
+      const res = await queryClinicalRag({ query: queryText.trim() });
+      setRagResponse(res);
+    } catch (err) {
+      setRagError(err.message || 'Clinical AI query failed. Please check backend connection.');
+    } finally {
+      setRagLoading(false);
+    }
+  };
 
   return (
     <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans">
@@ -46,11 +70,11 @@ export default function DashboardPage() {
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-bold text-white tracking-tight">Clinical Operations Overview</h1>
                 <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[11px] font-semibold text-emerald-300">
-                  Live Sync
+                  RAG & AI Active
                 </span>
               </div>
               <p className="mt-1 text-xs text-slate-400">
-                AI extraction models are monitoring new prescriptions and laboratory panels in real-time.
+                Neural vector indexing and Clinical RAG are monitoring medical records and lab panels.
               </p>
             </div>
 
@@ -103,7 +127,7 @@ export default function DashboardPage() {
               color="amber"
             />
             <StatCard
-              label="AI Copilot Queries"
+              label="AI RAG Queries"
               value="892"
               trend="+22.8%"
               trendUp={true}
@@ -186,27 +210,27 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            {/* Right 5 Columns: AI Copilot & Processing Activity */}
+            {/* Right 5 Columns: AI Clinical Assistant & Processing Velocity */}
             <div className="lg:col-span-5 flex flex-col gap-6">
-              {/* Clinora AI Copilot Card */}
-              <Card className="border-brand-purple/20 bg-gradient-to-b from-brand-purple/[0.08] to-slate-900/60 shadow-lg">
+              {/* Clinora AI Clinical Assistant Card */}
+              <Card className="border-brand-purple/20 bg-gradient-to-b from-brand-purple/[0.08] to-slate-900/70 shadow-xl">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-purple text-white shadow-md">
                         <Bot className="h-4 w-4" />
                       </div>
-                      <CardTitle className="text-sm font-bold text-white">Clinora Copilot</CardTitle>
+                      <CardTitle className="text-sm font-bold text-white">Clinora RAG Assistant</CardTitle>
                     </div>
                     <span className="rounded-full bg-brand-purple/20 px-2 py-0.5 text-[10px] font-bold text-brand-lavender border border-brand-purple/30">
-                      RAG Active
+                      Phase 7 Active
                     </span>
                   </div>
                 </CardHeader>
 
                 <CardContent className="space-y-3.5">
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    Ask natural questions across authorized prescriptions, notes, and lab records:
+                    Ask natural questions across authorized patient medical records and lab reports:
                   </p>
 
                   {/* Quick Prompts */}
@@ -214,8 +238,11 @@ export default function DashboardPage() {
                     {quickPrompts.map((prompt) => (
                       <button
                         key={prompt}
-                        onClick={() => setAiQuery(prompt)}
-                        className="rounded-lg border border-white/10 bg-slate-900/80 px-2.5 py-1 text-[11px] font-medium text-slate-300 transition-colors hover:border-brand-purple/50 hover:text-white hover:bg-slate-800"
+                        onClick={() => {
+                          setAiQuery(prompt);
+                          handleAskRAG(prompt);
+                        }}
+                        className="rounded-lg border border-white/10 bg-slate-900/80 px-2.5 py-1 text-[11px] font-medium text-slate-300 transition-colors hover:border-brand-purple/50 hover:text-white hover:bg-slate-800 text-left"
                       >
                         {prompt}
                       </button>
@@ -229,22 +256,86 @@ export default function DashboardPage() {
                       placeholder="Ask Clinora about patient records..."
                       value={aiQuery}
                       onChange={(e) => setAiQuery(e.target.value)}
-                      className="w-full rounded-xl border border-white/10 bg-slate-950/80 pl-3.5 pr-20 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-brand-purple"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleAskRAG();
+                      }}
+                      className="w-full rounded-xl border border-white/10 bg-slate-950/80 pl-3.5 pr-14 py-2.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-brand-purple"
                     />
                     <div className="absolute right-1.5 top-1.5 flex items-center gap-1">
-                      <button className="flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:text-slate-200">
-                        <Mic className="h-3.5 w-3.5" />
-                      </button>
                       <Button
                         size="sm"
                         variant="coral"
-                        className="h-6 px-2 text-[11px]"
-                        onClick={() => alert(`Copilot query: "${aiQuery}" will be processed in Phase 7 (RAG & AI Agent Workflow).`)}
+                        disabled={ragLoading || !aiQuery.trim()}
+                        className="h-7 px-2.5 text-xs font-semibold"
+                        onClick={() => handleAskRAG()}
                       >
-                        <Send className="h-3 w-3" />
+                        {ragLoading ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Send className="h-3 w-3" />
+                        )}
                       </Button>
                     </div>
                   </div>
+
+                  {/* RAG Error Banner */}
+                  {ragError && (
+                    <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-400 flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 shrink-0" />
+                      <span>{ragError}</span>
+                    </div>
+                  )}
+
+                  {/* RAG Answer Display */}
+                  {ragResponse && (
+                    <div className="mt-3 space-y-3 rounded-xl border border-brand-purple/30 bg-slate-950/90 p-3.5 shadow-inner">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+                          <Sparkles className="h-3.5 w-3.5 text-brand-coral" />
+                          <span>Grounded Medical Answer</span>
+                        </div>
+                        <Badge variant="outline" className="text-[10px] text-brand-lavender border-brand-purple/40">
+                          {ragResponse.model_used}
+                        </Badge>
+                      </div>
+
+                      <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap">
+                        {ragResponse.answer}
+                      </div>
+
+                      {/* Source Document Citations */}
+                      {ragResponse.citations && ragResponse.citations.length > 0 && (
+                        <div className="space-y-1.5 pt-2 border-t border-white/[0.08]">
+                          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
+                            <BookOpen className="h-3 w-3 text-emerald-400" />
+                            <span>Source Document Citations ({ragResponse.citations.length}):</span>
+                          </div>
+                          <div className="space-y-1.5">
+                            {ragResponse.citations.map((c, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-center justify-between rounded-lg bg-slate-900/80 p-2 border border-white/[0.05] hover:border-brand-purple/30 transition-colors cursor-pointer"
+                                onClick={() => navigate(`/documents/${c.document_id}`)}
+                              >
+                                <div className="truncate pr-2">
+                                  <span className="font-semibold text-xs text-white">[{c.document_title}]</span>
+                                  <span className="text-[11px] text-slate-400 ml-1.5">
+                                    {c.patient_name || 'Patient'} ({c.patient_id || ''})
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <Badge variant="mint" className="text-[10px]">
+                                    {(c.similarity_score * 100).toFixed(0)}% Match
+                                  </Badge>
+                                  <ExternalLink className="h-3 w-3 text-slate-400" />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 

@@ -29,3 +29,10 @@ venv/
 # Logs
 *.log
 logs/
+
+# Vector DB
+chroma_db/
+*.sqlite3
+*.sqlite3-journal
+*.bin
+

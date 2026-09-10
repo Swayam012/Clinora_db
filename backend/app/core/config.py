@@ -51,6 +51,10 @@ class Settings(BaseSettings):
     AUTH_RATE_LIMIT: str = "30/minute"
     RATE_LIMIT_ENABLED: bool = True
 
+    # Vector DB & Clinical RAG Configuration
+    CHROMA_PERSIST_DIR: str = "chroma_db"
+    RAG_TOP_K: int = 4
+
     def get_database_url(self) -> str:
         if self.DATABASE_URL:
             return self.DATABASE_URL

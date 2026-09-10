@@ -11,6 +11,13 @@ from .clinical_extraction import (
     LabResultItem,
     AllergyItem,
 )
+from .rag import (
+    RAGQueryRequest,
+    RAGQueryResponse,
+    CitationItem,
+    SemanticSearchResult,
+    IndexStatusResponse,
+)
 
 __all__ = [
     "UserCreate",
@@ -35,4 +42,9 @@ __all__ = [
     "MedicationItem",
     "LabResultItem",
     "AllergyItem",
+    "RAGQueryRequest",
+    "RAGQueryResponse",
+    "CitationItem",
+    "SemanticSearchResult",
+    "IndexStatusResponse",
 ]

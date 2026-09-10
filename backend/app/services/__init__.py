@@ -17,6 +17,12 @@ from .document_service import (
 )
 from .ocr_service import process_document_ocr
 from .clinical_extraction_service import extract_clinical_information
+from .rag_service import (
+    answer_clinical_query,
+    search_clinical_vectors,
+    index_all_documents,
+    index_single_document,
+)
 
 __all__ = [
     "register_user",
@@ -35,4 +41,8 @@ __all__ = [
     "remove_document",
     "process_document_ocr",
     "extract_clinical_information",
+    "answer_clinical_query",
+    "search_clinical_vectors",
+    "index_all_documents",
+    "index_single_document",
 ]

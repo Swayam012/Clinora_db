@@ -297,3 +297,54 @@ export async function deleteDocument(documentId) {
 
   return handleApiResponse(response, "Failed to delete document");
 }
+
+/**
+ * Ask natural language clinical question with grounded RAG answers & citations (Phase 7).
+ * POST /api/v1/rag/query
+ */
+export async function queryClinicalRag({ query, patientId = null, topK = 4 }) {
+  const response = await fetch(`${API_BASE_URL}/api/v1/rag/query`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({
+      query,
+      patient_id: patientId,
+      top_k: topK,
+    }),
+  });
+
+  return handleApiResponse(response, "Clinical Q&A query failed");
+}
+
+/**
+ * Perform semantic vector search across clinical records (Phase 7).
+ * GET /api/v1/rag/search
+ */
+export async function searchSemanticDocuments({ query, patientId = null, topK = 6 }) {
+  const params = new URLSearchParams({
+    query,
+    top_k: String(topK),
+  });
+  if (patientId) params.append("patient_id", patientId);
+
+  const response = await fetch(`${API_BASE_URL}/api/v1/rag/search?${params.toString()}`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  return handleApiResponse(response, "Semantic search failed");
+}
+
+/**
+ * Trigger re-indexing of all clinical documents into vector database.
+ * POST /api/v1/rag/index
+ */
+export async function reindexVectorStore() {
+  const response = await fetch(`${API_BASE_URL}/api/v1/rag/index`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
+  return handleApiResponse(response, "Vector re-indexing failed");
+}
+

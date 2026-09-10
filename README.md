@@ -102,7 +102,7 @@ npm run dev
 - [x] **Phase 4 — Document Storage**: Upload and manage prescriptions, lab reports, notes.
 - [x] **Phase 5 — OCR Engine**: Multi-engine text extraction (RapidOCR neural model, PyMuPDF native extraction, Tesseract fallback).
 - [x] **Phase 6 — Information Extraction**: LLM structured clinical entity extraction (Diagnoses with ICD-10, Medications, Vitals, Symptoms, Lab results).
-- [ ] **Phase 7 — Clinical RAG**: Vector DB search & Q&A.
+- [x] **Phase 7 — Clinical RAG**: Vector DB semantic search & grounded medical Q&A with exact document citations.
 - [ ] **Phase 8 — Knowledge Graph**: Neo4j entity relationships.
 - [ ] **Phase 9 — AI Agents**: Task-focused workflow agents.
 - [ ] **Phase 10 — Dashboard**: Complete UI and reporting analytics.
