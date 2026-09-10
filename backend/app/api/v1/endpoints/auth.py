@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
+from app.core.config import settings
 from app.core.rate_limit import limiter
 from app.core.security import create_access_token
 from app.db.session import get_db
@@ -18,14 +19,14 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
     status_code=status.HTTP_201_CREATED,
     summary="Register a new user",
 )
-@limiter.limit("5/15minute")
+@limiter.limit(settings.AUTH_RATE_LIMIT)
 def register(
     request: Request,
     user_data: UserCreate,
     db: Session = Depends(get_db),
 ):
     """
-    Create a new user account with strict rate limiting (max 5 per 15 mins per IP).
+    Create a new user account with rate limiting.
     Enforces staff role on public registration to prevent privilege escalation.
     """
     # Defensive enforcement: public registrations can only create 'staff' accounts
@@ -45,7 +46,7 @@ def register(
     response_model=Token,
     summary="Login and receive JWT token",
 )
-@limiter.limit("5/15minute")
+@limiter.limit(settings.AUTH_RATE_LIMIT)
 def login(
     request: Request,
     login_data: UserLogin,

@@ -47,6 +47,10 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: Union[str, None] = None
     LLM_MODEL: str = "gemini-2.5-flash"
 
+    # Rate Limiting Configuration
+    AUTH_RATE_LIMIT: str = "30/minute"
+    RATE_LIMIT_ENABLED: bool = True
+
     def get_database_url(self) -> str:
         if self.DATABASE_URL:
             return self.DATABASE_URL
