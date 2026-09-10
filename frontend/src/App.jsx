@@ -5,12 +5,19 @@ import PatientsPage from './pages/PatientsPage';
 import PatientProfilePage from './pages/PatientProfilePage';
 import DocumentsPage from './pages/DocumentsPage';
 import DocumentViewerPage from './pages/DocumentViewerPage';
+import AIAssistantPage from './pages/AIAssistantPage';
+import KnowledgeGraphPage from './pages/KnowledgeGraphPage';
+import AnalyticsPage from './pages/AnalyticsPage';
+import ReportsPage from './pages/ReportsPage';
+import SettingsPage from './pages/SettingsPage';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+
+      {/* 10 Core Protected Clinical Pages */}
       <Route
         path="/dashboard"
         element={
@@ -59,6 +66,47 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/assistant"
+        element={
+          <ProtectedRoute>
+            <AIAssistantPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/knowledge-graph"
+        element={
+          <ProtectedRoute>
+            <KnowledgeGraphPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/analytics"
+        element={
+          <ProtectedRoute>
+            <AnalyticsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/reports"
+        element={
+          <ProtectedRoute>
+            <ReportsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <SettingsPage />
+          </ProtectedRoute>
+        }
+      />
+
       {/* Redirect root to login */}
       <Route path="/" element={<Navigate to="/login" replace />} />
       {/* Catch-all */}

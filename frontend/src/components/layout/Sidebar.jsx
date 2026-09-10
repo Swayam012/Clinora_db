@@ -4,8 +4,10 @@ import {
   LayoutDashboard,
   Users,
   FileText,
-  LineChart,
   Bot,
+  Network,
+  LineChart,
+  ClipboardList,
   Settings,
   LogOut,
   Sparkles,
@@ -17,8 +19,10 @@ const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/patients', label: 'Patients', icon: Users },
   { path: '/documents', label: 'Documents', icon: FileText },
+  { path: '/assistant', label: 'AI Assistant', icon: Bot, badge: 'RAG' },
+  { path: '/knowledge-graph', label: 'Knowledge Graph', icon: Network, badge: 'KG' },
   { path: '/analytics', label: 'Analytics', icon: LineChart },
-  { path: '/ai-tools', label: 'AI Intelligence', icon: Bot, badge: 'RAG' },
+  { path: '/reports', label: 'Reports', icon: ClipboardList },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -52,9 +56,9 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation Links */}
-      <nav className="mt-8 flex flex-1 flex-col space-y-1.5">
-        <div className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-          Core Platform
+      <nav className="mt-7 flex flex-1 flex-col space-y-1 overflow-y-auto pr-1">
+        <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+          Clinical Platform
         </div>
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -64,16 +68,16 @@ export default function Sidebar() {
               to={item.path}
               className={({ isActive }) =>
                 cn(
-                  "group flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150",
+                  "group flex items-center justify-between rounded-lg px-3 py-2 text-xs font-medium transition-all duration-150",
                   isActive
-                    ? "bg-brand-purple/15 text-white font-semibold border border-brand-purple/30 shadow-sm shadow-brand-purple/10"
+                    ? "bg-brand-purple/20 text-white font-semibold border border-brand-purple/40 shadow-sm shadow-brand-purple/10"
                     : "text-slate-400 hover:bg-slate-900/80 hover:text-slate-100"
                 )
               }
             >
               {({ isActive }) => (
                 <>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2.5">
                     <Icon
                       className={cn(
                         "h-4 w-4 transition-colors",
@@ -84,7 +88,14 @@ export default function Sidebar() {
                   </div>
 
                   {item.badge && (
-                    <span className="rounded-full bg-brand-coral/20 px-1.5 py-0.5 text-[9px] font-bold text-brand-coral border border-brand-coral/30">
+                    <span
+                      className={cn(
+                        "rounded-full px-1.5 py-0.5 text-[9px] font-bold border",
+                        item.badge === 'RAG'
+                          ? "bg-brand-coral/20 text-brand-coral border-brand-coral/30"
+                          : "bg-cyan-500/20 text-cyan-400 border-cyan-500/30"
+                      )}
+                    >
                       {item.badge}
                     </span>
                   )}
@@ -96,18 +107,18 @@ export default function Sidebar() {
       </nav>
 
       {/* AI Assistant Callout Box */}
-      <div className="rounded-xl border border-brand-purple/20 bg-gradient-to-b from-brand-purple/10 to-transparent p-3.5 my-3">
+      <div className="rounded-xl border border-brand-purple/20 bg-gradient-to-b from-brand-purple/10 to-transparent p-3 my-2.5">
         <div className="flex items-center gap-2 text-xs font-semibold text-brand-lavender">
           <Sparkles className="h-3.5 w-3.5 text-brand-coral" />
-          <span>Clinora Copilot</span>
+          <span>Clinora Copilot v2.1</span>
         </div>
-        <p className="mt-1 text-[11px] text-slate-400 leading-relaxed">
-          OCR & Knowledge Graph assistant active.
+        <p className="mt-1 text-[10px] text-slate-400 leading-relaxed">
+          RAG Vector Search & Clinical Knowledge Graph active.
         </p>
       </div>
 
       {/* Footer Profile / Logout */}
-      <div className="border-t border-white/[0.08] pt-3">
+      <div className="border-t border-white/[0.08] pt-2.5">
         <button
           onClick={handleLogout}
           className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-400 transition-colors hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/20 border border-transparent"
