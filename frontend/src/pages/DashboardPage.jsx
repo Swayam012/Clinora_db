@@ -30,25 +30,26 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const [aiQuery, setAiQuery] = useState('');
   const [ragLoading, setRagLoading] = useState(false);
-  const [ragResponse, setRagResponse] = useState(null);
+  const [chatHistory, setChatHistory] = useState([]);
   const [ragError, setRagError] = useState('');
 
   const quickPrompts = [
     'What medications is Emily Johnson taking?',
+    "What is Evelyn Carter's cancer diagnosis?",
     'Summarize recent cardiology findings',
-    'Show all patients diagnosed with hypertension',
-    'What vital signs were recorded for Emily?',
+    'What mutation was found in Marcus Chen report?',
   ];
 
   const handleAskRAG = async (queryText = aiQuery) => {
-    if (!queryText || !queryText.trim()) return;
+    if (!queryText || !queryText.trim() || ragLoading) return;
+    const cleanQuery = queryText.trim();
     setRagLoading(true);
     setRagError('');
-    setRagResponse(null);
+    setAiQuery('');
 
     try {
-      const res = await queryClinicalRag({ query: queryText.trim() });
-      setRagResponse(res);
+      const res = await queryClinicalRag({ query: cleanQuery });
+      setChatHistory((prev) => [...prev, { query: cleanQuery, response: res }]);
     } catch (err) {
       setRagError(err.message || 'Clinical AI query failed. Please check backend connection.');
     } finally {
@@ -222,9 +223,14 @@ export default function DashboardPage() {
                       </div>
                       <CardTitle className="text-sm font-bold text-white">Clinora RAG Assistant</CardTitle>
                     </div>
-                    <span className="rounded-full bg-brand-purple/20 px-2 py-0.5 text-[10px] font-bold text-brand-lavender border border-brand-purple/30">
-                      Phase 7 Active
-                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate('/ai-tools')}
+                      className="text-[11px] h-6 px-2 text-brand-lavender hover:text-white"
+                    >
+                      Open Full Copilot &rarr;
+                    </Button>
                   </div>
                 </CardHeader>
 
@@ -238,10 +244,7 @@ export default function DashboardPage() {
                     {quickPrompts.map((prompt) => (
                       <button
                         key={prompt}
-                        onClick={() => {
-                          setAiQuery(prompt);
-                          handleAskRAG(prompt);
-                        }}
+                        onClick={() => handleAskRAG(prompt)}
                         className="rounded-lg border border-white/10 bg-slate-900/80 px-2.5 py-1 text-[11px] font-medium text-slate-300 transition-colors hover:border-brand-purple/50 hover:text-white hover:bg-slate-800 text-left"
                       >
                         {prompt}
@@ -286,54 +289,50 @@ export default function DashboardPage() {
                     </div>
                   )}
 
-                  {/* RAG Answer Display */}
-                  {ragResponse && (
-                    <div className="mt-3 space-y-3 rounded-xl border border-brand-purple/30 bg-slate-950/90 p-3.5 shadow-inner">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-white">
-                          <Sparkles className="h-3.5 w-3.5 text-brand-coral" />
-                          <span>Grounded Medical Answer</span>
-                        </div>
-                        <Badge variant="outline" className="text-[10px] text-brand-lavender border-brand-purple/40">
-                          {ragResponse.model_used}
-                        </Badge>
-                      </div>
-
-                      <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap">
-                        {ragResponse.answer}
-                      </div>
-
-                      {/* Source Document Citations */}
-                      {ragResponse.citations && ragResponse.citations.length > 0 && (
-                        <div className="space-y-1.5 pt-2 border-t border-white/[0.08]">
-                          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
-                            <BookOpen className="h-3 w-3 text-emerald-400" />
-                            <span>Source Document Citations ({ragResponse.citations.length}):</span>
+                  {/* RAG Multi-Turn Answers Display */}
+                  {chatHistory.length > 0 && (
+                    <div className="mt-3 space-y-3 max-h-96 overflow-y-auto pr-1">
+                      {chatHistory.map((item, i) => (
+                        <div key={i} className="space-y-2 rounded-xl border border-brand-purple/30 bg-slate-950/90 p-3.5 shadow-inner">
+                          <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
+                            <span className="text-[11px] font-semibold text-brand-coral">Q: {item.query}</span>
+                            <Badge variant="outline" className="text-[9px] text-brand-lavender border-brand-purple/40">
+                              {item.response.model_used}
+                            </Badge>
                           </div>
-                          <div className="space-y-1.5">
-                            {ragResponse.citations.map((c, idx) => (
-                              <div
-                                key={idx}
-                                className="flex items-center justify-between rounded-lg bg-slate-900/80 p-2 border border-white/[0.05] hover:border-brand-purple/30 transition-colors cursor-pointer"
-                                onClick={() => navigate(`/documents/${c.document_id}`)}
-                              >
-                                <div className="truncate pr-2">
-                                  <span className="font-semibold text-xs text-white">[{c.document_title}]</span>
-                                  <span className="text-[11px] text-slate-400 ml-1.5">
-                                    {c.patient_name || 'Patient'} ({c.patient_id || ''})
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                  <Badge variant="mint" className="text-[10px]">
-                                    {(c.similarity_score * 100).toFixed(0)}% Match
-                                  </Badge>
-                                  <ExternalLink className="h-3 w-3 text-slate-400" />
-                                </div>
+
+                          <div className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap">
+                            {item.response.answer}
+                          </div>
+
+                          {/* Source Document Citations */}
+                          {item.response.citations && item.response.citations.length > 0 && (
+                            <div className="space-y-1.5 pt-2 border-t border-white/[0.08]">
+                              <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-400">
+                                <BookOpen className="h-3 w-3 text-emerald-400" />
+                                <span>Citations ({item.response.citations.length}):</span>
                               </div>
-                            ))}
-                          </div>
+                              <div className="space-y-1">
+                                {item.response.citations.map((c, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="flex items-center justify-between rounded-lg bg-slate-900/80 p-1.5 border border-white/[0.05] hover:border-brand-purple/30 transition-colors cursor-pointer text-[11px]"
+                                    onClick={() => navigate(`/documents/${c.document_id}`)}
+                                  >
+                                    <div className="truncate pr-2">
+                                      <span className="font-semibold text-white">[{c.document_title}]</span>
+                                      <span className="text-slate-400 ml-1">({c.patient_name || 'Patient'})</span>
+                                    </div>
+                                    <Badge variant="mint" className="text-[9px] px-1 py-0 shrink-0">
+                                      {(c.similarity_score * 100).toFixed(0)}% Match
+                                    </Badge>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      )}
+                      ))}
                     </div>
                   )}
                 </CardContent>

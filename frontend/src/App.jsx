@@ -5,6 +5,9 @@ import PatientsPage from './pages/PatientsPage';
 import PatientProfilePage from './pages/PatientProfilePage';
 import DocumentsPage from './pages/DocumentsPage';
 import DocumentViewerPage from './pages/DocumentViewerPage';
+import AIAssistantPage from './pages/AIAssistantPage';
+import AnalyticsPage from './pages/AnalyticsPage';
+import SettingsPage from './pages/SettingsPage';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 
 export default function App() {
@@ -59,10 +62,42 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/ai-tools"
+        element={
+          <ProtectedRoute>
+            <AIAssistantPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/ai-assistant"
+        element={
+          <ProtectedRoute>
+            <AIAssistantPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/analytics"
+        element={
+          <ProtectedRoute>
+            <AnalyticsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <SettingsPage />
+          </ProtectedRoute>
+        }
+      />
       {/* Redirect root to login */}
       <Route path="/" element={<Navigate to="/login" replace />} />
       {/* Catch-all */}
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 }
