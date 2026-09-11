@@ -10,7 +10,7 @@ class UserCreate(BaseModel):
     """Schema for user registration request body with strict security validation."""
 
     email: EmailStr = Field(..., examples=["doctor@clinora.com"])
-    password: str = Field(..., min_length=8, max_length=128, examples=["SecurePass123!"])
+    password: str = Field(..., min_length=6, max_length=128, examples=["SecurePass123!"])
     full_name: str = Field(..., min_length=2, max_length=255, examples=["Dr. Sarah Khan"])
     role: Optional[str] = Field(
         default="staff",
@@ -29,16 +29,8 @@ class UserCreate(BaseModel):
     @field_validator("password")
     @classmethod
     def validate_password_complexity(cls, v: str) -> str:
-        if len(v) < 8:
-            raise ValueError("Password must be at least 8 characters long")
-        if not re.search(r"[A-Z]", v):
-            raise ValueError("Password must contain at least one uppercase letter")
-        if not re.search(r"[a-z]", v):
-            raise ValueError("Password must contain at least one lowercase letter")
-        if not re.search(r"\d", v):
-            raise ValueError("Password must contain at least one digit")
-        if not re.search(r"[@$!%*?&#^()_\-+=\[\]{}|;:,.<>/]", v):
-            raise ValueError("Password must contain at least one special character")
+        if len(v) < 6:
+            raise ValueError("Password must be at least 6 characters long")
         return v
 
 

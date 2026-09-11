@@ -55,12 +55,16 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     for error in exc.errors():
         field = " -> ".join(str(loc) for loc in error.get("loc", []))
         msg = error.get("msg", "Invalid input")
+        if msg.startswith("Value error, "):
+            msg = msg[len("Value error, "):]
         error_messages.append(f"{field}: {msg}")
+
+    combined_detail = "; ".join(error_messages) if error_messages else "Input validation failed"
 
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={
-            "detail": "Input validation failed",
+            "detail": combined_detail,
             "errors": error_messages,
         },
     )

@@ -36,9 +36,19 @@ async function handleApiResponse(response, defaultErrorMsg = "Request failed") {
     throw new Error(errorDetail);
   }
 
-  const data = await response.json();
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
+  }
+
   if (!response.ok) {
-    throw new Error(data.detail || defaultErrorMsg);
+    let errorMsg = data?.detail || defaultErrorMsg;
+    if (data?.errors && Array.isArray(data.errors) && data.errors.length > 0) {
+      errorMsg = data.errors.join("; ");
+    }
+    throw new Error(errorMsg);
   }
   return data;
 }
