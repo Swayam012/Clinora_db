@@ -266,6 +266,12 @@ def process_document_ocr(db: Session, document_id: uuid.UUID):
             f"OCR successfully completed for document {document_id}: "
             f"{len(extracted_text)} chars via {extraction_method}"
         )
+        # Auto-index OCR chunks into ChromaDB vector database (Phase 7 RAG)
+        try:
+            from app.services.rag_service import index_single_document
+            index_single_document(db, doc.id)
+        except Exception as e:
+            logger.warning(f"Auto vector indexing skipped for document {document_id}: {e}")
     else:
         update_data = DocumentUpdate(status="failed")
         doc = update_document(db, doc, update_data)

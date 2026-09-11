@@ -460,4 +460,11 @@ def extract_clinical_information(db: Session, document_id: uuid.UUID):
     updated_doc = update_document(db, doc, update_data)
     logger.info(f"Clinical information extraction completed successfully for document {document_id}")
 
+    # 4. Auto-index into ChromaDB vector database (Phase 7 RAG)
+    try:
+        from app.services.rag_service import index_single_document
+        index_single_document(db, updated_doc.id)
+    except Exception as e:
+        logger.warning(f"Auto vector indexing skipped for document {document_id}: {e}")
+
     return map_document_to_response(updated_doc)

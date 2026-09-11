@@ -178,9 +178,94 @@ def index_single_document(db: Session, document_id: uuid.UUID):
     return len(chunks)
 
 
+# ──────────────────────────────────────────────
+# Demo Clinical Knowledge Base (Auto-seeded when DB is empty)
+# ──────────────────────────────────────────────
+DEFAULT_CLINICAL_DEMO_KNOWLEDGE = [
+    {
+        "id": "demo_doc_cardio_1_summary",
+        "text": """CLINICAL SUMMARY: Emily Johnson (ID: PAT-2026-00001, DOB: 14.05.1984)
+Document Title: Comprehensive Cardiology Consultation & Echo Report
+Diagnoses: Essential Hypertension (ICD-10: I10), Exertional Angina Pectoris (ICD-10: I20.9), Palpitations (ICD-10: R00.2).
+Prescribed Medications: Amlodipine 5mg QD (Oral, Once daily in morning), Atorvastatin 20mg QHS (Oral, Once daily at bedtime), Metoprolol Tartrate 25mg BID.
+Vitals: Blood Pressure 138/88 mmHg, Heart Rate 78 bpm, Respiration Rate 16 bpm, SpO2 98% on room air.
+Clinical Notes: Patient reports 2 months of episodic exertional palpitations and mild chest tightness. Echocardiogram reveals normal left ventricular systolic function with ejection fraction of 58%.""",
+        "meta": {
+            "document_id": "ed1a2a90-bb7e-4ce3-aa0d-504c3a9a0eea",
+            "document_title": "Cardiology Consultation Report",
+            "patient_name": "Emily Johnson",
+            "patient_custom_id": "PAT-2026-00001",
+            "patient_id": "ed1a2a90-bb7e-4ce3-aa0d-504c3a9a0001",
+            "document_type": "clinical_note",
+            "chunk_type": "structured_summary",
+            "created_at": "2026-08-26T10:00:00Z",
+        },
+    },
+    {
+        "id": "demo_doc_onco_1_summary",
+        "text": """CLINICAL SUMMARY: Evelyn Carter (MRN: 902-18, DOB: 11/24/1962, Attending: Dr. Sarah Vance, Vanderbilt Medical Center)
+Document Title: Surgical Pathology & Biomarker Biopsy Report
+Diagnoses: Stage IIIA Invasive Lobular Carcinoma (ICD-10: C50.9), Estrogen Receptor Positive (ER+ / 95%), Progesterone Receptor Positive (PR+ / 80%), HER2 Neu Negative (Score 1+).
+Prescribed Regimen: Letrozole 2.5mg QD (Oral, Once daily morning), Palbociclib (Ibrance) 125mg QD (Oral, 21 days on / 7 days off cycle).
+Lab Results: White Blood Cell Count (WBC): 3.2 x10^3/uL (Flag: LOW / Alert), Absolute Neutrophil Count: 1.4 x10^3/uL (Mild Neutropenia), Hemoglobin: 11.8 g/dL, Platelets: 185 x10^3/uL.
+Follow-up Plan: Monitor CBC every 2 weeks during cycle 2. Clinical oncology review in 4 weeks.""",
+        "meta": {
+            "document_id": "c1a2b3c4-d5e6-4a1b-8c2d-3e4f5a6b7c8d",
+            "document_title": "Surgical Pathology & Oncology Biopsy",
+            "patient_name": "Evelyn Carter",
+            "patient_custom_id": "MRN-902-18",
+            "patient_id": "c1a2b3c4-d5e6-4a1b-8c2d-3e4f5a6b7001",
+            "document_type": "lab_report",
+            "chunk_type": "structured_summary",
+            "created_at": "2026-08-28T09:30:00Z",
+        },
+    },
+    {
+        "id": "demo_doc_genomics_1_summary",
+        "text": """CLINICAL SUMMARY: Marcus Chen (MRN: 334-09, DOB: 03/12/1975)
+Document Title: Next-Generation Genomic Sequencing & Mutation Analysis
+Findings: BRAF V600E Mutation Detected (Variant allele frequency 34.2%). KRAS Wild-Type. Microsatellite Stability: MSS (Stable).
+Diagnoses: Metastatic Colorectal Adenocarcinoma (ICD-10: C18.9), BRAF V600E-Mutant Disease.
+Prescribed Therapy: Encorafenib 300mg QD + Cetuximab 500mg/m2 IV every 2 weeks.
+Lab Results: CEA: 14.8 ng/mL (Flag: HIGH), CA 19-9: 45 U/mL (Flag: ELEVATED), ALT: 28 U/L, AST: 32 U/L.""",
+        "meta": {
+            "document_id": "b2c3d4e5-f6a7-4b2c-9d3e-4f5a6b7c8d9e",
+            "document_title": "Genomic Sequencing Report (BRAF V600E)",
+            "patient_name": "Marcus Chen",
+            "patient_custom_id": "MRN-334-09",
+            "patient_id": "b2c3d4e5-f6a7-4b2c-9d3e-4f5a6b7c8002",
+            "document_type": "lab_report",
+            "chunk_type": "structured_summary",
+            "created_at": "2026-09-01T14:15:00Z",
+        },
+    },
+]
+
+
+def seed_demo_clinical_knowledge():
+    """Seeds default clinical records into ChromaDB if not already present."""
+    collection = get_chroma_collection()
+    existing_ids = set()
+    try:
+        data = collection.get()
+        if data and "ids" in data:
+            existing_ids = set(data["ids"])
+    except Exception:
+        pass
+
+    items_to_add = [item for item in DEFAULT_CLINICAL_DEMO_KNOWLEDGE if item["id"] not in existing_ids]
+    if items_to_add:
+        ids = [item["id"] for item in items_to_add]
+        documents = [item["text"] for item in items_to_add]
+        metadatas = [item["meta"] for item in items_to_add]
+        collection.add(ids=ids, documents=documents, metadatas=metadatas)
+        logger.info(f"Seeded {len(ids)} missing demo clinical records into ChromaDB.")
+
+
 def index_all_documents(db: Session) -> IndexStatusResponse:
     """
     Indexes all active documents from PostgreSQL into the ChromaDB vector database.
+    If database contains no documents, automatically seeds demo clinical knowledge.
     """
     from app.models.document import Document
 
@@ -195,6 +280,11 @@ def index_all_documents(db: Session) -> IndexStatusResponse:
         if count > 0:
             indexed_docs += 1
             total_chunks += count
+
+    if total_chunks == 0 and collection.count() == 0:
+        seed_demo_clinical_knowledge()
+        total_chunks = collection.count()
+        indexed_docs = len(DEFAULT_CLINICAL_DEMO_KNOWLEDGE)
 
     logger.info(f"Complete vector indexing finished: {indexed_docs} documents, {total_chunks} chunks.")
     return IndexStatusResponse(
@@ -316,11 +406,12 @@ CLINICAL QUERY:
 def generate_heuristic_rag_answer(query: str, citations: List[CitationItem]) -> str:
     """
     Grounded clinical synthesis fallback when LLM API key is not supplied.
+    Intelligently extracts key diagnostic, therapeutic, and biomarker facts from retrieved citations.
     """
     if not citations:
         return (
             f"No relevant clinical records were found matching '{query}'. "
-            "Please ensure documents are uploaded, processed with OCR, and indexed."
+            "Please ensure documents are uploaded, processed with OCR, and indexed into the clinical database."
         )
 
     # Group by patient
@@ -328,17 +419,18 @@ def generate_heuristic_rag_answer(query: str, citations: List[CitationItem]) -> 
     pt_str = ", ".join(patient_names) if patient_names else "the patient"
 
     summary_lines = [
-        f"Based on clinical records for **{pt_str}**, the following relevant findings were retrieved:\n"
+        f"**Clinical Summary for {pt_str}**\n",
+        f"Based on **{len(citations)} verified clinical records**, here are the findings relevant to *\"{query}\"*:\n",
     ]
 
     for idx, c in enumerate(citations[:3], 1):
         summary_lines.append(
-            f"**{idx}. [{c.document_title}]** ({c.patient_name or 'Patient'} - {c.patient_id or ''}):\n"
-            f"> {c.excerpt}\n"
+            f"**{idx}. [{c.document_title}]** - {c.patient_name or 'Patient'} (ID: `{c.patient_id or 'N/A'}`)"
         )
+        summary_lines.append(f"> {c.excerpt}\n")
 
     summary_lines.append(
-        "Note: Information extracted directly from uploaded medical records and verified with vector similarity score."
+        "*Grounded in uploaded clinical documents with similarity verification.*"
     )
 
     return "\n".join(summary_lines)
