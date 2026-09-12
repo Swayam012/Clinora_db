@@ -397,3 +397,74 @@ export async function syncKnowledgeGraph() {
   return handleApiResponse(response, "Failed to sync clinical knowledge graph");
 }
 
+/**
+ * Fetch available clinical agent types and capabilities (Phase 9).
+ * GET /api/v1/agents/types
+ */
+export async function getAgentTypes() {
+  const response = await fetch(`${API_BASE_URL}/api/v1/agents/types`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  return handleApiResponse(response, "Failed to load clinical agent types");
+}
+
+/**
+ * Execute a specialized clinical AI workflow agent (Phase 9).
+ * POST /api/v1/agents/run
+ */
+export async function runAgentTask({ agentType, patientId, documentId = null, customPrompt = null }) {
+  const response = await fetch(`${API_BASE_URL}/api/v1/agents/run`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({
+      agent_type: agentType,
+      patient_id: patientId,
+      document_id: documentId,
+      custom_prompt: customPrompt,
+    }),
+  });
+
+  return handleApiResponse(response, "Clinical agent execution failed");
+}
+
+/**
+ * Run quick discharge summary agent.
+ * POST /api/v1/agents/discharge-summary/{patientId}
+ */
+export async function runDischargeSummaryAgent(patientId) {
+  const response = await fetch(`${API_BASE_URL}/api/v1/agents/discharge-summary/${encodeURIComponent(patientId)}`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
+  return handleApiResponse(response, "Discharge summary synthesis failed");
+}
+
+/**
+ * Run quick drug-drug interaction safety agent.
+ * POST /api/v1/agents/drug-interaction/{patientId}
+ */
+export async function runDrugInteractionAgent(patientId) {
+  const response = await fetch(`${API_BASE_URL}/api/v1/agents/drug-interaction/${encodeURIComponent(patientId)}`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
+  return handleApiResponse(response, "Drug interaction audit failed");
+}
+
+/**
+ * Run quick clinical trial matching agent.
+ * POST /api/v1/agents/trial-match/{patientId}
+ */
+export async function runClinicalTrialAgent(patientId) {
+  const response = await fetch(`${API_BASE_URL}/api/v1/agents/trial-match/${encodeURIComponent(patientId)}`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
+  return handleApiResponse(response, "Clinical trial matching failed");
+}
+

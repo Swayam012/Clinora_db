@@ -20,6 +20,7 @@ const navItems = [
   { path: '/documents', label: 'Documents', icon: FileText },
   { path: '/knowledge-graph', label: 'Knowledge Graph', icon: Network, badge: 'Graph' },
   { path: '/ai-tools', label: 'AI Intelligence', icon: Bot, badge: 'RAG' },
+  { path: '/agents', label: 'AI Agents', icon: Sparkles, badge: 'Agents' },
   { path: '/analytics', label: 'Analytics', icon: LineChart },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];

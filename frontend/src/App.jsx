@@ -9,6 +9,7 @@ import AIAssistantPage from './pages/AIAssistantPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
 import KnowledgeGraphPage from './pages/KnowledgeGraphPage';
+import AgentsPage from './pages/AgentsPage';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 
 export default function App() {
@@ -92,6 +93,22 @@ export default function App() {
         element={
           <ProtectedRoute>
             <KnowledgeGraphPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/agents"
+        element={
+          <ProtectedRoute>
+            <AgentsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/ai-agents"
+        element={
+          <ProtectedRoute>
+            <AgentsPage />
           </ProtectedRoute>
         }
       />
