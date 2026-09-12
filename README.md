@@ -103,7 +103,7 @@ npm run dev
 - [x] **Phase 5 — OCR Engine**: Multi-engine text extraction (RapidOCR neural model, PyMuPDF native extraction, Tesseract fallback).
 - [x] **Phase 6 — Information Extraction**: LLM structured clinical entity extraction (Diagnoses with ICD-10, Medications, Vitals, Symptoms, Lab results).
 - [x] **Phase 7 — Clinical RAG**: Vector DB semantic search & grounded medical Q&A with exact document citations.
-- [ ] **Phase 8 — Knowledge Graph**: Neo4j entity relationships.
+- [x] **Phase 8 — Knowledge Graph**: Multi-modal clinical entity relationships (Patients, ICD-10 Diagnoses, Medications, Biomarkers, Documents), dual-engine Neo4j/relational graph builder, and interactive SVG visualization.
 - [ ] **Phase 9 — AI Agents**: Task-focused workflow agents.
 - [ ] **Phase 10 — Dashboard**: Complete UI and reporting analytics.
 - [x] **Phase 11 — Security & Hardening**: Rate limiting (SlowAPI), magic byte upload validation, security headers, CORS lockdown, route guards, input validation.

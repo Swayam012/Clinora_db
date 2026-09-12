@@ -358,3 +358,42 @@ export async function reindexVectorStore() {
   return handleApiResponse(response, "Vector re-indexing failed");
 }
 
+/**
+ * Fetch patient entity-relationship subgraph (Phase 8).
+ * GET /api/v1/graph/patient/{patientId}
+ */
+export async function getPatientKnowledgeGraph(patientId) {
+  const response = await fetch(`${API_BASE_URL}/api/v1/graph/patient/${encodeURIComponent(patientId)}`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  return handleApiResponse(response, "Failed to load patient knowledge graph");
+}
+
+/**
+ * Fetch hospital-wide global clinical knowledge graph (Phase 8).
+ * GET /api/v1/graph/overview
+ */
+export async function getGlobalKnowledgeGraph(limit = 60) {
+  const response = await fetch(`${API_BASE_URL}/api/v1/graph/overview?limit=${limit}`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  return handleApiResponse(response, "Failed to load global knowledge graph");
+}
+
+/**
+ * Sync extracted clinical entities into graph store (Phase 8).
+ * POST /api/v1/graph/sync
+ */
+export async function syncKnowledgeGraph() {
+  const response = await fetch(`${API_BASE_URL}/api/v1/graph/sync`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+
+  return handleApiResponse(response, "Failed to sync clinical knowledge graph");
+}
+

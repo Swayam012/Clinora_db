@@ -8,6 +8,7 @@ import DocumentViewerPage from './pages/DocumentViewerPage';
 import AIAssistantPage from './pages/AIAssistantPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
+import KnowledgeGraphPage from './pages/KnowledgeGraphPage';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 
 export default function App() {
@@ -75,6 +76,22 @@ export default function App() {
         element={
           <ProtectedRoute>
             <AIAssistantPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/knowledge-graph"
+        element={
+          <ProtectedRoute>
+            <KnowledgeGraphPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/graph"
+        element={
+          <ProtectedRoute>
+            <KnowledgeGraphPage />
           </ProtectedRoute>
         }
       />

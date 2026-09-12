@@ -6,6 +6,7 @@ import {
   FileText,
   LineChart,
   Bot,
+  Network,
   Settings,
   LogOut,
   Sparkles,
@@ -17,8 +18,9 @@ const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/patients', label: 'Patients', icon: Users },
   { path: '/documents', label: 'Documents', icon: FileText },
-  { path: '/analytics', label: 'Analytics', icon: LineChart },
+  { path: '/knowledge-graph', label: 'Knowledge Graph', icon: Network, badge: 'Graph' },
   { path: '/ai-tools', label: 'AI Intelligence', icon: Bot, badge: 'RAG' },
+  { path: '/analytics', label: 'Analytics', icon: LineChart },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 
