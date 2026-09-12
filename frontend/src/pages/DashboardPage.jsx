@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/layout/Sidebar';
 import Topbar from '../components/layout/Topbar';
@@ -6,8 +6,12 @@ import { StatCard } from '../components/ui/stat-card';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
-import { currentUser, recentDocuments } from '../services/mockData';
-import { queryClinicalRag, searchSemanticDocuments } from '../services/api';
+import { currentUser, recentDocuments as fallbackDocs } from '../services/mockData';
+import {
+  queryClinicalRag,
+  getAnalyticsSummary,
+  getDocuments,
+} from '../services/api';
 import {
   Users,
   FileText,
@@ -24,6 +28,10 @@ import {
   CheckCircle2,
   AlertCircle,
   ExternalLink,
+  Brain,
+  Network,
+  Activity,
+  Layers,
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -32,6 +40,9 @@ export default function DashboardPage() {
   const [ragLoading, setRagLoading] = useState(false);
   const [chatHistory, setChatHistory] = useState([]);
   const [ragError, setRagError] = useState('');
+  const [liveStats, setLiveStats] = useState(null);
+  const [recentDocs, setRecentDocs] = useState([]);
+  const [docsLoading, setDocsLoading] = useState(true);
 
   const quickPrompts = [
     'What medications is Emily Johnson taking?',
@@ -39,6 +50,34 @@ export default function DashboardPage() {
     'Summarize recent cardiology findings',
     'What mutation was found in Marcus Chen report?',
   ];
+
+  // Load live analytics and recent documents
+  useEffect(() => {
+    async function loadDashboardData() {
+      try {
+        const stats = await getAnalyticsSummary();
+        setLiveStats(stats);
+      } catch (err) {
+        console.error('Failed to load live stats for dashboard:', err);
+      }
+
+      try {
+        const docsRes = await getDocuments({ perPage: 5 });
+        if (docsRes?.items && docsRes.items.length > 0) {
+          setRecentDocs(docsRes.items);
+        } else {
+          setRecentDocs(fallbackDocs.slice(0, 5));
+        }
+      } catch (err) {
+        console.error('Failed to load recent documents:', err);
+        setRecentDocs(fallbackDocs.slice(0, 5));
+      } finally {
+        setDocsLoading(false);
+      }
+    }
+
+    loadDashboardData();
+  }, []);
 
   const handleAskRAG = async (queryText = aiQuery) => {
     if (!queryText || !queryText.trim() || ragLoading) return;
@@ -75,19 +114,28 @@ export default function DashboardPage() {
                 </span>
               </div>
               <p className="mt-1 text-xs text-slate-400">
-                Neural vector indexing and Clinical RAG are monitoring medical records and lab panels.
+                Neural vector indexing, Knowledge Graphs, and Task-Focused Clinical Agents active across hospital records.
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => navigate('/patients')}
-                className="text-xs"
+                onClick={() => navigate('/agents')}
+                className="text-xs border-purple-500/30 hover:bg-purple-950/40 text-purple-300"
               >
-                <Users className="mr-1.5 h-3.5 w-3.5" />
-                View Patients
+                <Sparkles className="mr-1.5 h-3.5 w-3.5 text-brand-coral" />
+                AI Agents Hub
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/knowledge-graph')}
+                className="text-xs border-white/10 hover:bg-white/5"
+              >
+                <Network className="mr-1.5 h-3.5 w-3.5 text-brand-lavender" />
+                Knowledge Graph
               </Button>
               <Button
                 variant="coral"
@@ -105,7 +153,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
               label="Total Patients"
-              value="1,250"
+              value={liveStats ? liveStats.total_patients.toLocaleString() : '1,250'}
               trend="+15.2%"
               trendUp={true}
               icon={Users}
@@ -113,23 +161,23 @@ export default function DashboardPage() {
             />
             <StatCard
               label="Documents Processed"
-              value="3,480"
-              trend="-2.1%"
-              trendUp={false}
+              value={liveStats ? liveStats.processed_documents.toLocaleString() : '3,480'}
+              trend={liveStats ? `${liveStats.ocr_success_rate}% Accuracy` : '-2.1%'}
+              trendUp={true}
               icon={FileCheck}
               color="blue"
             />
             <StatCard
               label="Pending Documents"
-              value="145"
-              trend="In Queue"
+              value={liveStats ? liveStats.pending_documents.toLocaleString() : '145'}
+              trend="Queue Active"
               trendUp={true}
               icon={Clock}
               color="amber"
             />
             <StatCard
-              label="AI RAG Queries"
-              value="892"
+              label="AI RAG & Agent Queries"
+              value={liveStats ? liveStats.rag_queries_answered.toLocaleString() : '892'}
               trend="+22.8%"
               trendUp={true}
               icon={Bot}
@@ -140,17 +188,17 @@ export default function DashboardPage() {
           {/* Bento Grid: Documents Table + Processing Velocity + Clinora AI Assistant */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
             {/* Left 7 Columns: Recent Documents Table */}
-            <Card className="lg:col-span-7 flex flex-col justify-between">
+            <Card className="lg:col-span-7 flex flex-col justify-between border-white/[0.08] bg-slate-900/80 backdrop-blur-xl">
               <CardHeader className="flex flex-row items-center justify-between border-b border-white/[0.04] pb-4">
                 <div>
                   <CardTitle className="text-sm font-bold text-white">Recent Clinical Documents</CardTitle>
-                  <p className="text-xs text-slate-400">Recently uploaded medical charts and lab records</p>
+                  <p className="text-xs text-slate-400">Recently uploaded medical charts, prescriptions, and lab records</p>
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => navigate('/documents')}
-                  className="h-7 text-xs"
+                  className="h-7 text-xs border-white/10"
                 >
                   <Filter className="mr-1 h-3 w-3" />
                   View All
@@ -160,48 +208,48 @@ export default function DashboardPage() {
               <CardContent className="p-0 flex-1">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-900/80 text-slate-400 uppercase tracking-wider font-semibold border-b border-white/[0.06]">
+                    <thead className="bg-slate-950/80 text-slate-400 uppercase tracking-wider font-semibold border-b border-white/[0.06]">
                       <tr>
                         <th className="py-3 px-4">Document</th>
-                        <th className="py-3 px-4">Patient</th>
+                        <th className="py-3 px-4">Type</th>
                         <th className="py-3 px-4">Status</th>
                         <th className="py-3 px-4">Date</th>
                         <th className="py-3 px-4 text-right">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/[0.04]">
-                      {recentDocuments.slice(0, 5).map((doc) => (
+                      {recentDocs.map((doc) => (
                         <tr
                           key={doc.id}
                           className="hover:bg-slate-800/40 transition-colors cursor-pointer"
-                          onClick={() => navigate(`/documents/${doc.id}`, { state: { document: doc } })}
+                          onClick={() => navigate(`/documents/${doc.id}`)}
                         >
                           <td className="py-3.5 px-4">
-                            <div className="font-medium text-slate-200">{doc.name}</div>
-                            <div className="text-[11px] text-slate-500">{doc.type}</div>
+                            <div className="font-medium text-slate-200 truncate max-w-[180px]">
+                              {doc.title || doc.name || doc.original_filename}
+                            </div>
+                            <div className="text-[10px] text-slate-500 font-mono">{doc.id.slice(0, 12)}...</div>
                           </td>
                           <td className="py-3.5 px-4">
-                            <div className="font-medium text-slate-300">{doc.patientName}</div>
-                            <div className="font-mono text-[10px] text-slate-500">{doc.patientId}</div>
+                            <span className="rounded bg-white/5 px-2 py-0.5 text-[10px] font-medium text-slate-300">
+                              {(doc.document_type || doc.type || 'Clinical Note').replace('_', ' ')}
+                            </span>
                           </td>
                           <td className="py-3.5 px-4">
-                            <Badge variant={doc.status === 'processed' ? 'mint' : 'amber'}>
-                              {doc.status === 'processed' ? 'Processed' : 'Pending OCR'}
+                            <Badge
+                              variant={doc.status === 'processed' ? 'mint' : doc.status === 'processing' ? 'purple' : 'amber'}
+                              className="text-[10px]"
+                            >
+                              {doc.status || 'processed'}
                             </Badge>
                           </td>
-                          <td className="py-3.5 px-4 text-slate-400">{doc.date}</td>
+                          <td className="py-3.5 px-4 text-slate-400 font-mono text-[11px]">
+                            {doc.created_at ? new Date(doc.created_at).toLocaleDateString() : (doc.date || 'Today')}
+                          </td>
                           <td className="py-3.5 px-4 text-right">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-slate-400 hover:text-white"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/documents/${doc.id}`, { state: { document: doc } });
-                              }}
-                            >
-                              <ArrowRight className="h-3.5 w-3.5" />
-                            </Button>
+                            <span className="text-xs font-semibold text-brand-lavender hover:text-white transition-colors">
+                              View →
+                            </span>
                           </td>
                         </tr>
                       ))}
@@ -209,73 +257,75 @@ export default function DashboardPage() {
                   </table>
                 </div>
               </CardContent>
+
+              <div className="border-t border-white/[0.04] p-3 text-center bg-slate-950/40">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-xs text-slate-400 hover:text-white"
+                  onClick={() => navigate('/documents')}
+                >
+                  Explore All Clinical Records <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                </Button>
+              </div>
             </Card>
 
-            {/* Right 5 Columns: AI Clinical Assistant & Processing Velocity */}
-            <div className="lg:col-span-5 flex flex-col gap-6">
-              {/* Clinora AI Clinical Assistant Card */}
-              <Card className="border-brand-purple/20 bg-gradient-to-b from-brand-purple/[0.08] to-slate-900/70 shadow-xl">
-                <CardHeader className="pb-3">
+            {/* Right 5 Columns: Clinora RAG AI Assistant */}
+            <div className="flex flex-col gap-6 lg:col-span-5">
+              <Card className="flex flex-col border-brand-purple/30 bg-gradient-to-b from-brand-purple/10 to-slate-900/90 shadow-lg shadow-brand-purple/5">
+                <CardHeader className="pb-3 border-b border-white/[0.04]">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-purple text-white shadow-md">
-                        <Bot className="h-4 w-4" />
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-coral text-white font-bold shadow-md shadow-brand-coral/20">
+                        <Sparkles className="h-4 w-4" />
                       </div>
-                      <CardTitle className="text-sm font-bold text-white">Clinora RAG Assistant</CardTitle>
+                      <div>
+                        <CardTitle className="text-sm font-bold text-white">Clinora RAG Assistant</CardTitle>
+                        <p className="text-[11px] text-slate-400">Grounded semantic search across patient corpus</p>
+                      </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => navigate('/ai-tools')}
-                      className="text-[11px] h-6 px-2 text-brand-lavender hover:text-white"
-                    >
-                      Open Full Copilot &rarr;
-                    </Button>
+                    <Badge variant="mint" className="text-[9px]">Grounded RAG</Badge>
                   </div>
                 </CardHeader>
 
-                <CardContent className="space-y-3.5">
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    Ask natural questions across authorized patient medical records and lab reports:
-                  </p>
+                <CardContent className="space-y-3 pt-3 flex-1 flex flex-col justify-between">
+                  {/* Prompt Box */}
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap gap-1.5">
+                      {quickPrompts.map((prompt, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => handleAskRAG(prompt)}
+                          disabled={ragLoading}
+                          className="rounded-lg bg-slate-950/80 border border-white/[0.08] px-2.5 py-1 text-[11px] text-slate-300 hover:bg-brand-purple/20 hover:border-brand-purple/40 hover:text-white transition-all text-left"
+                        >
+                          "{prompt}"
+                        </button>
+                      ))}
+                    </div>
 
-                  {/* Quick Prompts */}
-                  <div className="flex flex-wrap gap-1.5">
-                    {quickPrompts.map((prompt) => (
-                      <button
-                        key={prompt}
-                        onClick={() => handleAskRAG(prompt)}
-                        className="rounded-lg border border-white/10 bg-slate-900/80 px-2.5 py-1 text-[11px] font-medium text-slate-300 transition-colors hover:border-brand-purple/50 hover:text-white hover:bg-slate-800 text-left"
-                      >
-                        {prompt}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Prompt Input Box */}
-                  <div className="relative mt-2">
-                    <input
-                      type="text"
-                      placeholder="Ask Clinora about patient records..."
-                      value={aiQuery}
-                      onChange={(e) => setAiQuery(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleAskRAG();
-                      }}
-                      className="w-full rounded-xl border border-white/10 bg-slate-950/80 pl-3.5 pr-14 py-2.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-brand-purple"
-                    />
-                    <div className="absolute right-1.5 top-1.5 flex items-center gap-1">
+                    <div className="relative mt-2">
+                      <input
+                        type="text"
+                        value={aiQuery}
+                        onChange={(e) => setAiQuery(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleAskRAG()}
+                        placeholder="Ask medical question across all records..."
+                        disabled={ragLoading}
+                        className="w-full rounded-xl bg-slate-950 border border-white/10 py-2.5 pl-3.5 pr-10 text-xs text-white placeholder-slate-500 focus:border-brand-purple/50 focus:outline-none focus:ring-1 focus:ring-brand-purple/30"
+                      />
                       <Button
-                        size="sm"
-                        variant="coral"
-                        disabled={ragLoading || !aiQuery.trim()}
-                        className="h-7 px-2.5 text-xs font-semibold"
+                        size="icon"
+                        variant="ghost"
                         onClick={() => handleAskRAG()}
+                        disabled={ragLoading || !aiQuery.trim()}
+                        className="absolute right-1 top-1 h-7 w-7 text-brand-lavender hover:bg-brand-purple/20 hover:text-white"
                       >
                         {ragLoading ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-brand-coral" />
                         ) : (
-                          <Send className="h-3 w-3" />
+                          <Send className="h-3.5 w-3.5" />
                         )}
                       </Button>
                     </div>
@@ -339,11 +389,11 @@ export default function DashboardPage() {
               </Card>
 
               {/* Processing Activity Velocity */}
-              <Card>
+              <Card className="border-white/[0.08] bg-slate-900/80 backdrop-blur-xl">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <div className="flex items-center gap-2">
                     <TrendingUp className="h-4 w-4 text-emerald-400" />
-                    <CardTitle className="text-xs font-bold text-white">Document Processing Activity</CardTitle>
+                    <CardTitle className="text-xs font-bold text-white">Document Processing Velocity</CardTitle>
                   </div>
                   <span className="text-[11px] text-slate-500 font-mono">Past 9 Months</span>
                 </CardHeader>

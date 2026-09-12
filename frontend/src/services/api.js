@@ -468,3 +468,56 @@ export async function runClinicalTrialAgent(patientId) {
   return handleApiResponse(response, "Clinical trial matching failed");
 }
 
+/**
+ * Fetch live analytics summary and KPI stat cards (Phase 10).
+ * GET /api/v1/analytics/summary
+ */
+export async function getAnalyticsSummary() {
+  const response = await fetch(`${API_BASE_URL}/api/v1/analytics/summary`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  return handleApiResponse(response, "Failed to load analytics summary");
+}
+
+/**
+ * Fetch ICD-10 diagnostic cohorts distribution (Phase 10).
+ * GET /api/v1/analytics/diagnoses
+ */
+export async function getAnalyticsDiagnoses() {
+  const response = await fetch(`${API_BASE_URL}/api/v1/analytics/diagnoses`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  return handleApiResponse(response, "Failed to load diagnoses distribution");
+}
+
+/**
+ * Fetch OCR engine performance telemetry & ingestion breakdown (Phase 10).
+ * GET /api/v1/analytics/telemetry
+ */
+export async function getAnalyticsTelemetry() {
+  const response = await fetch(`${API_BASE_URL}/api/v1/analytics/telemetry`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  return handleApiResponse(response, "Failed to load analytics telemetry");
+}
+
+/**
+ * Export hospital clinical intelligence report (Phase 10).
+ * GET /api/v1/analytics/export
+ */
+export async function exportAnalyticsReport() {
+  const response = await fetch(`${API_BASE_URL}/api/v1/analytics/export`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  return handleApiResponse(response, "Failed to export analytics report");
+}
+
+
