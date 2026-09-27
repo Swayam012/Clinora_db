@@ -27,6 +27,10 @@ import {
 } from 'lucide-react';
 
 export default function DocumentViewerPage() {
+  const [user, setUser] = useState(null);
+  useEffect(() => {
+    import('../services/api').then((m) => m.getCurrentUser().then((u) => u && setUser(u)).catch(() => {}));
+  }, []);
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();

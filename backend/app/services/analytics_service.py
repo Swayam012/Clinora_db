@@ -244,12 +244,16 @@ def get_telemetry_metrics(db: Session) -> AnalyticsTelemetryResponse:
         ),
     ]
 
+    from app.core.redis import check_redis_connection
+    redis_info = check_redis_connection()
+
     return AnalyticsTelemetryResponse(
         document_distribution=distribution,
         ocr_telemetry=ocr_telemetry,
         total_storage_mb=48.6,
         avg_pipeline_latency_ms=42.0,
         system_status="Operational",
+        redis_status=redis_info,
     )
 
 

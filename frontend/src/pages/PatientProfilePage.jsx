@@ -6,8 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import PatientFormModal from '../components/patients/PatientFormModal';
-import { currentUser, mockPatients, recentDocuments } from '../services/mockData';
-import { getPatient, updatePatient } from '../services/api';
+import { getPatient, updatePatient, deletePatient, getDocuments } from '../services/api';
 import {
   Users,
   ArrowLeft,
@@ -21,54 +20,86 @@ import {
   AlertCircle,
   Clock,
   Shield,
+  Trash2,
 } from 'lucide-react';
 
 export default function PatientProfilePage() {
+  const [user, setUser] = useState(null);
+  useEffect(() => {
+    import('../services/api').then((m) => m.getCurrentUser().then((u) => u && setUser(u)).catch(() => {}));
+  }, []);
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
 
   const [patient, setPatient] = useState(location.state?.patient || null);
+  const [patientDocs, setPatientDocs] = useState([]);
   const [loading, setLoading] = useState(!patient);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
+    const fetchPatientData = async () => {
+      setLoading(true);
+      try {
+        const data = await getPatient(id);
+        setPatient(data);
+      } catch (err) {
+        console.error('Failed to load patient profile:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     if (!patient) {
-      const fetchPatientData = async () => {
-        setLoading(true);
-        try {
-          const data = await getPatient(id);
-          setPatient(data);
-        } catch (err) {
-          const found = mockPatients.find((p) => p.id === id || p.patient_id === id);
-          if (found) setPatient(found);
-        } finally {
-          setLoading(false);
-        }
-      };
       fetchPatientData();
     }
   }, [id, patient]);
+
+  // Load linked documents for this patient
+  useEffect(() => {
+    const fetchDocs = async () => {
+      if (!patient?.id) return;
+      try {
+        const res = await getDocuments({ patientId: patient.id });
+        if (res?.items) {
+          setPatientDocs(res.items);
+        }
+      } catch (err) {
+        console.debug('Failed to fetch patient documents:', err);
+      }
+    };
+    fetchDocs();
+  }, [patient?.id]);
 
   const handleUpdate = async (formData) => {
     try {
       const updated = await updatePatient(patient.id, formData);
       setPatient(updated);
     } catch (err) {
-      setPatient((prev) => ({ ...prev, ...formData }));
+      alert(`Update failed: ${err.message}`);
     }
   };
 
-  const patientDocs = recentDocuments.filter(
-    (d) => d.patientId === patient?.patient_id || d.patientName?.includes(patient?.first_name || '')
-  );
+  const handleDelete = async () => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete patient "${patient.first_name} ${patient.last_name}"? All linked records will be archived.`
+    );
+    if (!confirmed) return;
+
+    try {
+      await deletePatient(patient.id);
+      navigate('/patients');
+    } catch (err) {
+      alert(`Failed to delete patient: ${err.message}`);
+    }
+  };
 
   if (loading) {
     return (
       <div className="flex min-h-screen bg-slate-950 text-slate-100">
         <Sidebar />
         <div className="flex flex-1 flex-col ml-64 min-w-0">
-          <Topbar user={currentUser} />
+          <Topbar user={user} />
           <main className="flex-1 flex items-center justify-center">
             <p className="text-slate-500 text-xs">Loading patient dossier...</p>
           </main>
@@ -82,7 +113,7 @@ export default function PatientProfilePage() {
       <div className="flex min-h-screen bg-slate-950 text-slate-100">
         <Sidebar />
         <div className="flex flex-1 flex-col ml-64 min-w-0">
-          <Topbar user={currentUser} />
+          <Topbar user={user} />
           <main className="flex-1 flex flex-col items-center justify-center p-8 space-y-4">
             <AlertCircle className="h-10 w-10 text-brand-coral" />
             <h2 className="text-lg font-bold text-white">Patient Record Not Found</h2>
@@ -101,11 +132,11 @@ export default function PatientProfilePage() {
       <Sidebar />
 
       <div className="flex flex-1 flex-col ml-64 min-w-0">
-        <Topbar user={currentUser} />
+        <Topbar user={user} />
 
         <main className="flex-1 space-y-6 p-8">
-          {/* Breadcrumb Navigation */}
-          <div>
+          {/* Breadcrumb & Action Buttons */}
+          <div className="flex items-center justify-between">
             <Button
               variant="outline"
               size="sm"
@@ -114,6 +145,16 @@ export default function PatientProfilePage() {
             >
               <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
               Back to Patients
+            </Button>
+
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDelete}
+              className="text-xs h-8 bg-rose-500/10 text-rose-300 border border-rose-500/30 hover:bg-rose-500/20"
+            >
+              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+              Delete Patient
             </Button>
           </div>
 
@@ -159,19 +200,27 @@ export default function PatientProfilePage() {
                 </div>
                 <div className="flex justify-between py-1 border-b border-white/[0.04]">
                   <span className="text-slate-400">Email:</span>
-                  <span className="font-medium text-slate-200 truncate max-w-[170px]">{patient.email || '--'}</span>
+                  <span className="font-medium text-slate-200">{patient.email || '--'}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-white/[0.04]">
+                  <span className="text-slate-400">Address:</span>
+                  <span className="font-medium text-slate-200 text-right max-w-[200px] truncate">{patient.address || '--'}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-white/[0.04]">
+                  <span className="text-slate-400">Emergency Contact:</span>
+                  <span className="font-medium text-slate-200">{patient.emergency_contact_name || '--'}</span>
                 </div>
                 <div className="flex justify-between py-1">
-                  <span className="text-slate-400">Emergency:</span>
-                  <span className="font-medium text-slate-200">{patient.emergency_contact_name || '--'}</span>
+                  <span className="text-slate-400">Emergency Phone:</span>
+                  <span className="font-medium text-slate-200">{patient.emergency_contact_phone || '--'}</span>
                 </div>
               </div>
 
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setIsEditModalOpen(true)}
                 className="w-full text-xs"
+                onClick={() => setIsEditModalOpen(true)}
               >
                 <Edit className="mr-1.5 h-3.5 w-3.5" />
                 Edit Demographics
@@ -237,13 +286,13 @@ export default function PatientProfilePage() {
                               onClick={() => navigate(`/documents/${doc.id}`, { state: { document: doc } })}
                             >
                               <td className="py-3.5 px-5 font-medium text-slate-200">
-                                {doc.name}
+                                {doc.title || doc.name || doc.original_filename}
+                              </td>
+                              <td className="py-3.5 px-5 text-slate-400 capitalize">
+                                {(doc.document_type || doc.type || 'Clinical Note').replace('_', ' ')}
                               </td>
                               <td className="py-3.5 px-5 text-slate-400">
-                                {doc.type}
-                              </td>
-                              <td className="py-3.5 px-5 text-slate-400">
-                                {doc.date}
+                                {doc.created_at ? new Date(doc.created_at).toLocaleDateString() : 'Recent'}
                               </td>
                               <td className="py-3.5 px-5">
                                 <Badge variant={doc.status === 'processed' ? 'mint' : 'amber'}>

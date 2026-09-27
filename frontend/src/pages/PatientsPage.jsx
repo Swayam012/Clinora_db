@@ -7,8 +7,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import PatientFormModal from '../components/patients/PatientFormModal';
-import { currentUser, mockPatients } from '../services/mockData';
-import { getPatients, createPatient } from '../services/api';
+import { getPatients, createPatient, deletePatient } from '../services/api';
 import {
   Users,
   UserPlus,
@@ -18,9 +17,14 @@ import {
   Droplet,
   Calendar,
   Filter,
+  Trash2,
 } from 'lucide-react';
 
 export default function PatientsPage() {
+  const [user, setUser] = useState(null);
+  useEffect(() => {
+    import('../services/api').then((m) => m.getCurrentUser().then((u) => u && setUser(u)).catch(() => {}));
+  }, []);
   const navigate = useNavigate();
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -31,27 +35,11 @@ export default function PatientsPage() {
     setLoading(true);
     try {
       const data = await getPatients(1, 50, search);
-      if (data?.patients && data.patients.length > 0) {
-        setPatients(data.patients);
-      } else {
-        const filteredMock = search
-          ? mockPatients.filter((p) =>
-              `${p.first_name} ${p.last_name} ${p.patient_id}`
-                .toLowerCase()
-                .includes(search.toLowerCase())
-            )
-          : mockPatients;
-        setPatients(filteredMock);
-      }
+      const pts = data?.patients || data?.items || [];
+      setPatients(pts);
     } catch (err) {
-      const filteredMock = search
-        ? mockPatients.filter((p) =>
-            `${p.first_name} ${p.last_name} ${p.patient_id}`
-              .toLowerCase()
-              .includes(search.toLowerCase())
-          )
-        : mockPatients;
-      setPatients(filteredMock);
+      console.error('Failed to load patients:', err);
+      setPatients([]);
     } finally {
       setLoading(false);
     }
@@ -66,14 +54,20 @@ export default function PatientsPage() {
       const created = await createPatient(formData);
       setPatients((prev) => [created, ...prev]);
     } catch (err) {
-      const newMock = {
-        ...formData,
-        id: `mock-${Date.now()}`,
-        patient_id: `PAT-2026-${String(patients.length + 1).padStart(5, '0')}`,
-        is_active: true,
-        created_at: new Date().toISOString(),
-      };
-      setPatients((prev) => [newMock, ...prev]);
+      alert(`Error creating patient: ${err.message}`);
+    }
+  };
+
+  const handleDeletePatient = async (patientId, patientName, e) => {
+    e.stopPropagation();
+    const confirmed = window.confirm(`Are you sure you want to delete patient "${patientName}"? All linked clinical documents will be archived.`);
+    if (!confirmed) return;
+
+    try {
+      await deletePatient(patientId);
+      setPatients((prev) => prev.filter((p) => p.id !== patientId));
+    } catch (err) {
+      alert(`Failed to delete patient: ${err.message}`);
     }
   };
 
@@ -82,7 +76,7 @@ export default function PatientsPage() {
       <Sidebar />
 
       <div className="flex flex-1 flex-col ml-64 min-w-0">
-        <Topbar user={currentUser} />
+        <Topbar user={user} />
 
         <main className="flex-1 space-y-6 p-8">
           {/* Header Section */}
@@ -193,17 +187,29 @@ export default function PatientsPage() {
                             </Badge>
                           </td>
                           <td className="py-3.5 px-5 text-right">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-slate-400 hover:text-white"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/patients/${p.id}`, { state: { patient: p } });
-                              }}
-                            >
-                              <ArrowRight className="h-3.5 w-3.5" />
-                            </Button>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10"
+                                title="Delete Patient"
+                                onClick={(e) => handleDeletePatient(p.id, `${p.first_name} ${p.last_name}`, e)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-slate-400 hover:text-white"
+                                title="View Patient Details"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/patients/${p.id}`, { state: { patient: p } });
+                                }}
+                              >
+                                <ArrowRight className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       ))

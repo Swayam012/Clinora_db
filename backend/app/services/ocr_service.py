@@ -19,6 +19,7 @@ from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.redis import redis_cache_get, redis_cache_set
 from app.models.document import Document
 from app.repositories.document_repository import get_document_by_id, update_document
 from app.schemas.document import DocumentUpdate
@@ -238,6 +239,18 @@ def process_document_ocr(db: Session, document_id: uuid.UUID):
         doc = update_document(db, doc, update_data)
         raise FileNotFoundError(f"Document file not found on disk: {file_path}")
 
+    # Check Redis cache first
+    cache_key = f"ocr:doc:{doc.id}"
+    cached_ocr = redis_cache_get(cache_key)
+    if cached_ocr and isinstance(cached_ocr, dict) and "ocr_text" in cached_ocr:
+        logger.info(f"OCR result loaded from Redis cache for document {document_id}")
+        update_data = DocumentUpdate(
+            status="processed",
+            ocr_text=cached_ocr["ocr_text"],
+        )
+        doc = update_document(db, doc, update_data)
+        return map_document_to_response(doc)
+
     extracted_text = ""
     extraction_method = "unknown"
 
@@ -257,6 +270,8 @@ def process_document_ocr(db: Session, document_id: uuid.UUID):
         raise
 
     if extracted_text:
+        # Cache in Redis
+        redis_cache_set(cache_key, {"ocr_text": extracted_text, "method": extraction_method}, ttl_seconds=86400)
         update_data = DocumentUpdate(
             status="processed",
             ocr_text=extracted_text,

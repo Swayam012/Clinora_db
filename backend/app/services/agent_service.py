@@ -28,7 +28,7 @@ from app.schemas.agent import (
     MedicalCodeItem,
     TrialMatchItem,
 )
-from app.services.graph_service import DEMO_PATIENTS_GRAPH, extract_entities_from_document
+from app.services.graph_service import extract_entities_from_document
 
 logger = logging.getLogger(__name__)
 
@@ -41,41 +41,17 @@ AGENT_TYPES = [
         category="Clinical Documentation",
         capabilities=["Longitudinal Synthesis", "Medication Reconciliation", "Follow-up Planning", "Red-Flag Warnings"],
     ),
-    AgentTypeInfo(
-        id="drug_interaction",
-        name="Drug Interaction & Safety Agent",
-        description="Screens all active patient prescriptions against clinical pharmacology rules to detect adverse interactions and contraindications.",
-        icon="Pill",
-        category="Pharmacovigilance",
-        capabilities=["CYP3A4 & P-gp Screening", "Duplicate Therapy Detection", "Organ Contraindications", "Severity Grading"],
-    ),
-    AgentTypeInfo(
-        id="clinical_trial",
-        name="Clinical Trial Matching Agent",
-        description="Matches patient genomic mutations, histology, and biomarkers with eligible clinical oncology protocols.",
-        icon="Sparkles",
-        category="Precision Medicine",
-        capabilities=["Biomarker Matching", "NCT Protocol Search", "Eligibility Scoring", "Inclusion/Exclusion Audit"],
-    ),
-    AgentTypeInfo(
-        id="medical_coding",
-        name="Medical Coding & ICD-10 Agent",
-        description="Analyzes physician consultation notes and pathology reports to suggest compliant ICD-10-CM and CPT billing codes.",
-        icon="FileCheck",
-        category="Revenue & Compliance",
-        capabilities=["ICD-10-CM Suggestions", "CPT Procedure Coding", "Chart Evidence Snippets", "Confidence Scoring"],
-    ),
 ]
 
 
 def get_patient_clinical_profile(db: Session, patient_id_str: str) -> Dict[str, Any]:
-    """Retrieves full patient records and extractions from DB or demo cache."""
-    demo_match = next((d for d in DEMO_PATIENTS_GRAPH if str(d["patient"]["id"]) == patient_id_str or d["patient"]["mrn"] == patient_id_str), None)
-
+    """Retrieves full patient records and extractions strictly from PostgreSQL DB."""
     patient_record = None
     try:
         if len(patient_id_str) == 36:
             patient_record = db.query(Patient).filter(Patient.id == uuid.UUID(patient_id_str)).first()
+        else:
+            patient_record = db.query(Patient).filter(Patient.patient_id == patient_id_str).first()
     except Exception:
         pass
 
@@ -97,39 +73,25 @@ def get_patient_clinical_profile(db: Session, patient_id_str: str) -> Dict[str, 
             "id": str(patient_record.id),
             "name": patient_record.full_name,
             "mrn": patient_record.custom_id,
-            "gender": patient_record.gender or "Female",
-            "department": "Oncology / Internal Medicine",
-            "conditions": conditions or [{"name": "Stage IIIA Invasive Lobular Carcinoma", "icd10": "C50.9"}],
-            "medications": medications or [{"name": "Letrozole", "dosage": "2.5mg QD"}, {"name": "Palbociclib", "dosage": "125mg QD"}],
-            "labs": labs or [{"name": "WBC Count", "value": "3.2", "unit": "x10^3/uL", "flag": "Low"}],
+            "gender": patient_record.gender or "Unknown",
+            "department": "Internal Medicine",
+            "conditions": conditions,
+            "medications": medications,
+            "labs": labs,
             "documents": doc_summaries,
         }
 
-    if demo_match:
-        p = demo_match["patient"]
-        return {
-            "id": p["id"],
-            "name": p["name"],
-            "mrn": p["mrn"],
-            "gender": p["gender"],
-            "department": p["department"],
-            "conditions": demo_match["conditions"],
-            "medications": demo_match["medications"],
-            "labs": demo_match["labs"],
-            "documents": demo_match["documents"],
-        }
-
-    # Generic Fallback
+    # Empty patient fallback if not found in database
     return {
         "id": patient_id_str,
-        "name": "Evelyn Carter",
-        "mrn": "MRN-902-18",
-        "gender": "Female",
-        "department": "Oncology",
-        "conditions": [{"name": "Stage IIIA Invasive Lobular Carcinoma", "icd10": "C50.9"}],
-        "medications": [{"name": "Letrozole", "dosage": "2.5mg QD"}, {"name": "Palbociclib", "dosage": "125mg QD"}],
-        "labs": [{"name": "WBC Count", "value": "3.2", "unit": "x10^3/uL", "flag": "Low"}],
-        "documents": [{"title": "Surgical Pathology Report", "type": "lab_report"}],
+        "name": "Patient Record",
+        "mrn": patient_id_str,
+        "gender": "Unknown",
+        "department": "General Medicine",
+        "conditions": [],
+        "medications": [],
+        "labs": [],
+        "documents": [],
     }
 
 

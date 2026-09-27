@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { currentUser } from '../services/mockData';
-import { queryClinicalRag, reindexVectorStore } from '../services/api';
+import { queryClinicalRag, reindexVectorStore, getPatients } from '../services/api';
 import {
   Bot,
   Sparkles,
@@ -24,12 +24,20 @@ import {
 } from 'lucide-react';
 
 export default function AIAssistantPage() {
+  const [user, setUser] = useState(null);
+  const [patientsList, setPatientsList] = useState([]);
+  useEffect(() => {
+    import('../services/api').then(m => m.getCurrentUser().then(u => u && setUser(u)).catch(() => {}));
+    getPatients(1, 100).then(res => {
+      if (res?.patients) setPatientsList(res.patients);
+    }).catch(err => console.debug('Failed to fetch patients list for AI Assistant:', err));
+  }, []);
   const navigate = useNavigate();
   const [messages, setMessages] = useState([
     {
       id: 'welcome',
       role: 'assistant',
-      text: 'Hello, Dr. Sharma. I am the Clinora AI Clinical Assistant. I can search across all digitized patient medical records, lab panels, and oncology pathology reports to answer clinical questions with grounded citations. How can I assist you today?',
+      text: 'Hello. I am the Clinora AI Clinical Assistant. I can search across all digitized patient medical records, lab panels, and clinical documents to answer questions with grounded citations. How can I assist you today?',
       citations: [],
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
@@ -42,10 +50,10 @@ export default function AIAssistantPage() {
   const messagesEndRef = useRef(null);
 
   const suggestedPrompts = [
-    { label: 'Evelyn Carter Oncology', query: "What is Evelyn Carter's cancer diagnosis and current medication regimen?" },
-    { label: 'Marcus Chen Genomics', query: 'What mutation was found in Marcus Chen genomic sequencing report?' },
-    { label: 'Emily Johnson Cardiology', query: 'What medications is Emily Johnson taking and what were her vitals?' },
-    { label: 'Hypertension Cohort', query: 'Show all patients diagnosed with hypertension and their prescribed drugs.' },
+    { label: 'Medication Reconciliation', query: 'What active medications, dosages, and administration frequencies are documented?' },
+    { label: 'Clinical Summary', query: 'Summarize the primary diagnoses and clinical history across recent documents.' },
+    { label: 'Lab Findings & Abnormalities', query: 'Check the latest laboratory test results for any abnormal or out-of-range values.' },
+    { label: 'Vital Signs & Treatment Plan', query: 'What were the documented vital signs and physician recommendations from recent consultations?' },
   ];
 
   const scrollToBottom = () => {
@@ -134,7 +142,7 @@ export default function AIAssistantPage() {
       <Sidebar />
 
       <div className="flex flex-1 flex-col ml-64 min-w-0">
-        <Topbar user={currentUser} />
+        <Topbar user={user} />
 
         <main className="flex-1 flex flex-col p-6 max-w-6xl mx-auto w-full h-[calc(100vh-64px)] overflow-hidden">
           {/* Top Control Bar */}
@@ -146,9 +154,6 @@ export default function AIAssistantPage() {
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-base font-bold text-white tracking-tight">Clinical AI & RAG Intelligence</h1>
-                  <span className="rounded-full bg-brand-coral/20 px-2 py-0.5 text-[10px] font-bold text-brand-coral border border-brand-coral/30">
-                    Phase 7 RAG Active
-                  </span>
                 </div>
                 <p className="text-[11px] text-slate-400">
                   Grounded multi-modal clinical intelligence powered by ChromaDB vector search and LLM extraction.
@@ -164,9 +169,11 @@ export default function AIAssistantPage() {
                 className="h-8 rounded-lg border border-white/10 bg-slate-900 px-2.5 text-xs text-slate-200 focus:outline-none focus:border-brand-purple"
               >
                 <option value="all">All Patient Records</option>
-                <option value="c1a2b3c4-d5e6-4a1b-8c2d-3e4f5a6b7001">Evelyn Carter (MRN-902-18)</option>
-                <option value="b2c3d4e5-f6a7-4b2c-9d3e-4f5a6b7c8002">Marcus Chen (MRN-334-09)</option>
-                <option value="ed1a2a90-bb7e-4ce3-aa0d-504c3a9a0001">Emily Johnson (PAT-2026-00001)</option>
+                {patientsList.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.first_name} {p.last_name} ({p.patient_id})
+                  </option>
+                ))}
               </select>
 
               <Button

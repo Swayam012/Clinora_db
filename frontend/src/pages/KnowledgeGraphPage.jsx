@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { currentUser } from '../services/mockData';
-import { getPatientKnowledgeGraph, getGlobalKnowledgeGraph, syncKnowledgeGraph } from '../services/api';
+import { getPatientKnowledgeGraph, getGlobalKnowledgeGraph, syncKnowledgeGraph, getPatients } from '../services/api';
 import {
   Network,
   Sparkles,
@@ -40,6 +40,14 @@ const NODE_COLORS = {
 };
 
 export default function KnowledgeGraphPage() {
+  const [user, setUser] = useState(null);
+  const [patientsList, setPatientsList] = useState([]);
+  useEffect(() => {
+    import('../services/api').then(m => m.getCurrentUser().then(u => u && setUser(u)).catch(() => {}));
+    getPatients(1, 100).then(res => {
+      if (res?.patients) setPatientsList(res.patients);
+    }).catch(err => console.debug('Failed to fetch patients list for graph:', err));
+  }, []);
   const navigate = useNavigate();
   const [selectedCohort, setSelectedCohort] = useState('global');
   const [graphData, setGraphData] = useState(null);
@@ -200,7 +208,7 @@ export default function KnowledgeGraphPage() {
       <Sidebar />
 
       <div className="flex flex-1 flex-col ml-64 min-w-0">
-        <Topbar user={currentUser} />
+        <Topbar user={user} />
 
         <main className="flex-1 flex flex-col p-6 max-w-7xl mx-auto w-full space-y-4">
           {/* Header & Controls */}
@@ -213,9 +221,6 @@ export default function KnowledgeGraphPage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <h1 className="text-base font-bold text-white tracking-tight">Clinical Knowledge Graph</h1>
-                    <span className="rounded-full bg-brand-purple/20 px-2 py-0.5 text-[10px] font-bold text-brand-lavender border border-brand-purple/30">
-                      Phase 8 Graph Engine
-                    </span>
                   </div>
                   <p className="text-[11px] text-slate-400">
                     Interactive multi-modal entity network mapping Patients, Diagnoses (ICD-10), Medications, and Biomarkers.
@@ -232,9 +237,11 @@ export default function KnowledgeGraphPage() {
                 className="h-8 rounded-lg border border-white/10 bg-slate-900 px-3 text-xs text-slate-200 focus:outline-none focus:border-brand-purple"
               >
                 <option value="global">Global Hospital Graph (All Patients)</option>
-                <option value="c1a2b3c4-d5e6-4a1b-8c2d-3e4f5a6b7001">Evelyn Carter (Oncology / MRN-902-18)</option>
-                <option value="b2c3d4e5-f6a7-4b2c-9d3e-4f5a6b7c8002">Marcus Chen (Genomics / MRN-334-09)</option>
-                <option value="ed1a2a90-bb7e-4ce3-aa0d-504c3a9a0001">Emily Johnson (Cardiology / PAT-2026-00001)</option>
+                {patientsList.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.first_name} {p.last_name} ({p.patient_id})
+                  </option>
+                ))}
               </select>
 
               {/* Sync Graph Button */}

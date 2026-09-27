@@ -6,39 +6,31 @@ import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card'
 import { StatCard } from '../components/ui/stat-card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
-import { currentUser } from '../services/mockData';
 import {
   getAnalyticsSummary,
   getAnalyticsDiagnoses,
   getAnalyticsTelemetry,
   exportAnalyticsReport,
+  getCurrentUser,
 } from '../services/api';
 import {
-  LineChart,
   FileCheck,
   Brain,
   Clock,
-  Sparkles,
-  TrendingUp,
   Activity,
   Layers,
   Database,
-  BarChart3,
   RefreshCw,
   Download,
-  Printer,
   CheckCircle2,
-  AlertCircle,
-  FileText,
   Cpu,
-  ShieldCheck,
   Server,
   Zap,
-  Filter,
 } from 'lucide-react';
 
 export default function AnalyticsPage() {
   const navigate = useNavigate();
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [summary, setSummary] = useState(null);
@@ -49,14 +41,16 @@ export default function AnalyticsPage() {
 
   const loadAnalyticsData = async () => {
     try {
-      const [sumRes, diagRes, telRes] = await Promise.all([
+      const [sumRes, diagRes, telRes, userData] = await Promise.all([
         getAnalyticsSummary(),
         getAnalyticsDiagnoses(),
         getAnalyticsTelemetry(),
+        getCurrentUser().catch(() => null),
       ]);
       setSummary(sumRes);
       setDiagnoses(diagRes?.cohorts || []);
       setTelemetry(telRes);
+      if (userData) setUser(userData);
       setLastUpdated(new Date().toLocaleTimeString());
     } catch (err) {
       console.error('Failed to load live analytics:', err);
@@ -120,19 +114,13 @@ export default function AnalyticsPage() {
       <Sidebar />
 
       <div className="flex flex-1 flex-col ml-64 min-w-0">
-        <Topbar user={currentUser} />
+        <Topbar user={user} />
 
         <main className="flex-1 space-y-6 p-8 max-w-7xl mx-auto w-full">
           {/* Header Banner */}
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-white/[0.08] pb-5">
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold text-white tracking-tight">Clinical Telemetry & Hospital Analytics</h1>
-                <Badge variant="mint" className="text-[10px] flex items-center gap-1">
-                  <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
-                  Live Stream Active
-                </Badge>
-              </div>
+              <h1 className="text-xl font-bold text-white tracking-tight">Clinical Telemetry & Hospital Analytics</h1>
               <p className="text-xs text-slate-400 mt-1">
                 Hospital document throughput, OCR multi-engine benchmarks, and real-time clinical entity metrics.
               </p>

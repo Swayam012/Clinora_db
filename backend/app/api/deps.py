@@ -6,6 +6,7 @@ from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.redis import is_token_blacklisted
 from app.db.session import get_db
 from app.models.user import User
 from app.repositories.user_repository import get_user_by_id
@@ -25,22 +26,21 @@ def get_current_user(
     FastAPI dependency that extracts and validates the JWT from the request.
 
     How it works:
-    1. OAuth2PasswordBearer extracts the token from the Authorization header.
-    2. We decode the JWT using our SECRET_KEY.
-    3. We extract the user ID from the 'sub' (subject) claim.
-    4. We look up the user in the database.
-    5. If anything fails, we return 401 Unauthorized.
-
-    Usage in routes:
-        @router.get("/protected")
-        def protected_route(current_user: User = Depends(get_current_user)):
-            return {"hello": current_user.full_name}
+    1. Check if token is blacklisted in Redis (e.g. logged out).
+    2. OAuth2PasswordBearer extracts the token from the Authorization header.
+    3. We decode the JWT using our SECRET_KEY.
+    4. We extract the user ID from the 'sub' (subject) claim.
+    5. We look up the user in the database.
+    6. If anything fails, we return 401 Unauthorized.
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
+        detail="Could not validate credentials or session revoked",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
+    if is_token_blacklisted(token):
+        raise credentials_exception
 
     try:
         # Decode the JWT token
@@ -71,6 +71,8 @@ def get_current_user(
 
 def validate_token_string(token: str, db: Session):
     """Validates a JWT token string without raising exceptions directly."""
+    if is_token_blacklisted(token):
+        return None
     try:
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]

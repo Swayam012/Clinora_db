@@ -116,6 +116,23 @@ export async function getCurrentUser() {
 }
 
 /**
+ * Logout user and blacklist JWT token in Redis (Phase 11 / Redis).
+ */
+export async function logoutUser() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/logout`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+    });
+    localStorage.removeItem("clinora_token");
+    return handleApiResponse(response, "Logout completed");
+  } catch (err) {
+    localStorage.removeItem("clinora_token");
+    return { status: "local_cleared" };
+  }
+}
+
+/**
  * Fetch paginated list of patients.
  */
 export async function getPatients(page = 1, perPage = 20, search = "", isActive = true) {

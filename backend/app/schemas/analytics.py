@@ -65,6 +65,7 @@ class AnalyticsTelemetryResponse(BaseModel):
     total_storage_mb: float
     avg_pipeline_latency_ms: float
     system_status: str = "Operational"
+    redis_status: Optional[Dict[str, Any]] = None
 
 
 class HospitalReportExportResponse(BaseModel):

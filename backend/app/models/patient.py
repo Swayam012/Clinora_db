@@ -63,3 +63,20 @@ class Patient(Base):
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
+
+    @property
+    def full_name(self) -> str:
+        return f"{self.first_name} {self.last_name}".strip()
+
+    @property
+    def custom_id(self) -> str:
+        return self.patient_id
+
+    @property
+    def mrn(self) -> str:
+        return self.patient_id
+
+    @property
+    def phone_number(self) -> Optional[str]:
+        return self.phone
+

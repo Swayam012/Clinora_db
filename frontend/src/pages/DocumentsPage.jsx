@@ -7,7 +7,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import DocumentUploadModal from '../components/documents/DocumentUploadModal';
-import { currentUser, recentDocuments } from '../services/mockData';
+import { recentDocuments } from '../services/mockData';
 import { getDocuments, deleteDocument, getDocumentFileUrl } from '../services/api';
 import {
   FileText,
@@ -31,6 +31,10 @@ const DOC_TYPES = [
 ];
 
 export default function DocumentsPage() {
+  const [user, setUser] = useState(null);
+  useEffect(() => {
+    import('../services/api').then((m) => m.getCurrentUser().then((u) => u && setUser(u)).catch(() => {}));
+  }, []);
   const navigate = useNavigate();
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -102,7 +106,7 @@ export default function DocumentsPage() {
       <Sidebar />
 
       <div className="flex flex-1 flex-col ml-64 min-w-0">
-        <Topbar user={currentUser} />
+        <Topbar user={user} />
 
         <main className="flex-1 space-y-6 p-8">
           {/* Header Section */}

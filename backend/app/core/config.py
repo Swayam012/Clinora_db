@@ -55,6 +55,23 @@ class Settings(BaseSettings):
     CHROMA_PERSIST_DIR: str = "chroma_db"
     RAG_TOP_K: int = 4
 
+    # Redis Configuration
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+    REDIS_PASSWORD: Union[str, None] = None
+    REDIS_DB: int = 0
+    REDIS_URL: Union[str, None] = None
+    REDIS_ENABLED: bool = True
+    REDIS_CACHE_TTL_SECONDS: int = 3600  # default 1 hour TTL
+    REDIS_CONNECT_TIMEOUT_SECS: float = 2.0
+
+    def get_redis_url(self) -> str:
+        if self.REDIS_URL:
+            return self.REDIS_URL
+        if self.REDIS_PASSWORD:
+            return f"redis://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+
     def get_database_url(self) -> str:
         if self.DATABASE_URL:
             return self.DATABASE_URL
