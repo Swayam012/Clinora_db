@@ -215,17 +215,19 @@ def search_clinical_vectors(
     top_k: int = 4,
 ) -> List[CitationItem]:
     """
-    Performs cosine similarity search across indexed clinical chunks.
+    Performs cosine similarity search across indexed clinical chunks with document-level deduplication.
     """
     collection = get_chroma_collection()
     where_filter = None
     if patient_id:
         where_filter = {"patient_id": str(patient_id)}
 
+    candidate_k = max(top_k * 4, 16)
+
     try:
         results = collection.query(
             query_texts=[query],
-            n_results=top_k,
+            n_results=candidate_k,
             where=where_filter,
             include=["documents", "metadatas", "distances"],
         )
@@ -233,33 +235,54 @@ def search_clinical_vectors(
         logger.warning(f"ChromaDB query failed: {e}")
         return []
 
-    citations = []
-    if results and results.get("documents") and len(results["documents"]) > 0:
-        docs = results["documents"][0]
-        metas = results["metadatas"][0] if results.get("metadatas") else []
-        distances = results["distances"][0] if results.get("distances") else []
+    if not results or not results.get("documents") or len(results["documents"]) == 0:
+        return []
 
-        for i in range(len(docs)):
-            meta = metas[i] if i < len(metas) else {}
-            dist = distances[i] if i < len(distances) else 0.5
-            # Cosine distance to similarity (1.0 = exact match)
-            similarity = max(0.0, min(1.0, round(1.0 - (dist / 2.0), 3)))
+    docs = results["documents"][0]
+    metas = results["metadatas"][0] if results.get("metadatas") else []
+    distances = results["distances"][0] if results.get("distances") else []
 
-            excerpt = docs[i]
-            if len(excerpt) > 280:
-                excerpt = excerpt[:280] + "..."
+    doc_map = {}
 
-            citations.append(CitationItem(
-                document_id=uuid.UUID(meta.get("document_id", str(uuid.uuid4()))),
-                document_title=meta.get("document_title", "Clinical Document"),
-                patient_name=meta.get("patient_name"),
-                patient_id=meta.get("patient_custom_id"),
-                document_type=meta.get("document_type"),
-                excerpt=excerpt,
-                similarity_score=similarity,
-            ))
+    for i in range(len(docs)):
+        meta = metas[i] if i < len(metas) else {}
+        dist = distances[i] if i < len(distances) else 0.5
+        # Cosine distance to similarity (1.0 = exact match)
+        similarity = max(0.0, min(1.0, round(1.0 - (dist / 2.0), 3)))
 
-    return citations
+        doc_id_str = meta.get("document_id")
+        if not doc_id_str:
+            continue
+
+        try:
+            doc_uuid = uuid.UUID(doc_id_str)
+        except Exception:
+            doc_uuid = uuid.uuid4()
+
+        chunk_type = meta.get("chunk_type", "")
+        excerpt = docs[i]
+        if len(excerpt) > 280:
+            excerpt = excerpt[:280] + "..."
+
+        citation = CitationItem(
+            document_id=doc_uuid,
+            document_title=meta.get("document_title", "Clinical Document"),
+            patient_name=meta.get("patient_name"),
+            patient_id=meta.get("patient_custom_id"),
+            document_type=meta.get("document_type"),
+            excerpt=excerpt,
+            similarity_score=similarity,
+        )
+
+        if doc_id_str not in doc_map:
+            doc_map[doc_id_str] = citation
+        else:
+            existing = doc_map[doc_id_str]
+            if chunk_type == "structured_summary" or similarity > existing.similarity_score:
+                doc_map[doc_id_str] = citation
+
+    deduped_citations = sorted(doc_map.values(), key=lambda c: c.similarity_score, reverse=True)
+    return deduped_citations[:top_k]
 
 
 # ──────────────────────────────────────────────
@@ -268,7 +291,7 @@ def search_clinical_vectors(
 
 def generate_rag_answer_with_gemini(query: str, citations: List[CitationItem]) -> Optional[str]:
     """
-    Uses Google Gemini to synthesize a grounded medical response based on retrieved citations.
+    Uses Google Gemini to synthesize a grounded medical response based on deduplicated citations.
     """
     api_key = settings.GEMINI_API_KEY or os.environ.get("GEMINI_API_KEY")
     if not api_key or api_key.startswith("your_") or len(api_key) < 15:
@@ -290,9 +313,10 @@ Answer the following healthcare provider query based EXCLUSIVELY on the provided
 
 CLINICAL GUIDELINES:
 1. Ground every statement strictly in the provided excerpts.
-2. If the excerpts do not contain enough information, state clearly that the specific information is not recorded in the available documents.
-3. Explicitly mention the document title and patient name when citing clinical findings or prescribed medications.
-4. Keep the answer professional, structured, concise, and clinically actionable.
+2. DEDUPLICATE information per patient: Provide exactly ONE consolidated response per patient. Do NOT repeat raw excerpts or print duplicated sections.
+3. If the query asks for prescriptions or medications, list them clearly with drug name, dosage, frequency, and duration.
+4. Explicitly mention the document title and patient name.
+5. Keep the answer professional, structured, concise, and clinically actionable.
 
 CONTEXT MEDICAL EXCERPTS:
 {context_text}
@@ -314,10 +338,14 @@ CLINICAL QUERY:
     return None
 
 
-def generate_heuristic_rag_answer(query: str, citations: List[CitationItem]) -> str:
+def generate_heuristic_rag_answer(
+    db: Session,
+    query: str,
+    citations: List[CitationItem],
+) -> str:
     """
-    Grounded clinical synthesis fallback when LLM API key is not supplied.
-    Intelligently extracts key diagnostic, therapeutic, and biomarker facts from retrieved citations.
+    Grounded clinical synthesis engine that extracts key diagnostic, therapeutic, and biomarker facts
+    from verified document records and formats a clean, consolidated, non-repetitive response.
     """
     if not citations:
         return (
@@ -325,26 +353,212 @@ def generate_heuristic_rag_answer(query: str, citations: List[CitationItem]) -> 
             "Please ensure documents are uploaded, processed with OCR, and indexed into the clinical database."
         )
 
-    # Group by patient
-    patient_names = list(dict.fromkeys([c.patient_name for c in citations if c.patient_name]))
-    pt_str = ", ".join(patient_names) if patient_names else "the patient"
+    # Detect query intent
+    is_rx_query = bool(re.search(r"\b(prescription|prescriptions|rx|medication|medications|drug|drugs|medicine|medicines|dose|dosage)\b", query, re.I))
+    is_diag_query = bool(re.search(r"\b(diagnosis|diagnoses|condition|conditions|disease|diseases|icd|problem|problems)\b", query, re.I))
+    is_vitals_query = bool(re.search(r"\b(vital|vitals|bp|blood pressure|pulse|heart rate|temp|temperature|spo2|oxygen)\b", query, re.I))
+    is_labs_query = bool(re.search(r"\b(lab|labs|test|tests|result|results|blood|panel|cholesterol|sugar|glucose)\b", query, re.I))
 
-    summary_lines = [
-        f"**Clinical Summary for {pt_str}**\n",
-        f"Based on **{len(citations)} verified clinical records**, here are the findings relevant to *\"{query}\"*:\n",
-    ]
+    # Retrieve matching document entities from database
+    doc_ids = list(dict.fromkeys([c.document_id for c in citations]))
+    doc_records = []
+    for doc_id in doc_ids:
+        doc = get_document_by_id(db, doc_id)
+        if doc and doc.is_active:
+            doc_records.append(doc)
 
-    for idx, c in enumerate(citations[:3], 1):
-        summary_lines.append(
-            f"**{idx}. [{c.document_title}]** - {c.patient_name or 'Patient'} (ID: `{c.patient_id or 'N/A'}`)"
-        )
-        summary_lines.append(f"> {c.excerpt}\n")
+    if not doc_records:
+        pt_names = list(dict.fromkeys([c.patient_name for c in citations if c.patient_name]))
+        pt_str = ", ".join(pt_names) if pt_names else "Patient"
+        lines = [
+            f"### 📋 Clinical Summary for {pt_str}\n",
+        ]
+        for c in citations[:2]:
+            lines.append(f"**[{c.document_title}]** - `{c.patient_id or 'N/A'}`\n> {c.excerpt}\n")
+        return "\n".join(lines)
 
-    summary_lines.append(
-        "*Grounded in uploaded clinical documents with similarity verification.*"
-    )
+    # Group documents by patient
+    patient_groups = {}
+    for doc in doc_records:
+        p_name = doc.patient.full_name if doc.patient else "Patient"
+        p_id = doc.patient.custom_id if doc.patient else "PAT-UNKNOWN"
+        key = (p_name, p_id)
+        if key not in patient_groups:
+            patient_groups[key] = []
+        patient_groups[key].append(doc)
 
-    return "\n".join(summary_lines)
+    # If query specifically mentions a patient name or ID, focus exclusively on that patient
+    query_lower = query.lower()
+    matched_named_groups = {}
+    for (p_name, p_id), p_docs in patient_groups.items():
+        name_tokens = [t.lower() for t in p_name.split() if len(t) >= 3]
+        if (p_name.lower() in query_lower) or (p_id.lower() in query_lower) or any(tok in query_lower for tok in name_tokens):
+            matched_named_groups[(p_name, p_id)] = p_docs
+
+    if matched_named_groups:
+        patient_groups = matched_named_groups
+
+    output_blocks = []
+
+    for (p_name, p_id), p_docs in patient_groups.items():
+        block_lines = []
+        block_lines.append(f"### 📋 Clinical Summary for **{p_name}** (`{p_id}`)")
+
+        all_meds = []
+        all_diags = []
+        all_vitals = {}
+        all_labs = []
+        all_allergies = []
+        summaries = []
+        doc_titles = []
+
+        for doc in p_docs:
+            doc_titles.append(f"[{doc.title}]")
+            ext = doc.extracted_data
+            if not ext and doc.ocr_text:
+                from app.services.clinical_extraction_service import extract_heuristic_fallback
+                try:
+                    ext = extract_heuristic_fallback(doc.ocr_text)
+                except Exception:
+                    ext = None
+
+            if ext and isinstance(ext, dict):
+                if ext.get("clinical_summary"):
+                    summaries.append(ext["clinical_summary"])
+                if ext.get("medications"):
+                    for m in ext["medications"]:
+                        if isinstance(m, dict) and m.get("drug_name"):
+                            if not any(x.get("drug_name", "").lower() == m["drug_name"].lower() for x in all_meds):
+                                all_meds.append(m)
+                if ext.get("diagnoses"):
+                    for d in ext["diagnoses"]:
+                        if isinstance(d, dict) and d.get("condition"):
+                            if not any(x.get("condition", "").lower() == d["condition"].lower() for x in all_diags):
+                                all_diags.append(d)
+                if ext.get("vitals") and isinstance(ext["vitals"], dict):
+                    for vk, vv in ext["vitals"].items():
+                        if vv and vk not in all_vitals:
+                            all_vitals[vk] = vv
+                if ext.get("lab_results"):
+                    for l in ext["lab_results"]:
+                        if isinstance(l, dict) and l.get("test_name"):
+                            if not any(x.get("test_name", "").lower() == l["test_name"].lower() for x in all_labs):
+                                all_labs.append(l)
+                if ext.get("allergies"):
+                    for a in ext["allergies"]:
+                        if isinstance(a, dict) and a.get("allergen"):
+                            if not any(x.get("allergen", "").lower() == a["allergen"].lower() for x in all_allergies):
+                                all_allergies.append(a)
+
+        doc_source_str = ", ".join(doc_titles)
+        block_lines.append(f"*Source Document: {doc_source_str}*\n")
+
+        if is_rx_query:
+            if all_meds:
+                block_lines.append("#### 💊 Prescribed Medications / Rx Schedule:")
+                for m in all_meds:
+                    drug = m.get("drug_name", "Medication")
+                    dose = m.get("dosage", "")
+                    freq = m.get("frequency", "")
+                    duration = m.get("duration", "")
+                    instr = m.get("instructions", "")
+
+                    details = []
+                    if dose:
+                        details.append(f"**Dosage:** {dose}")
+                    if freq:
+                        details.append(f"**Frequency:** {freq}")
+                    if duration:
+                        details.append(f"**Duration:** {duration}")
+                    if instr:
+                        details.append(f"**Instructions:** {instr}")
+
+                    detail_str = " | ".join(details) if details else "As directed"
+                    block_lines.append(f"- **{drug}** — {detail_str}")
+            else:
+                block_lines.append("No active medications or prescriptions were explicitly recorded in the referenced documents.")
+
+            if all_diags:
+                diag_str = ", ".join([f"{d.get('condition')} ({d.get('icd10_code', 'N/A')})" for d in all_diags])
+                block_lines.append(f"\n**Associated Diagnoses:** {diag_str}")
+
+            if all_vitals.get("blood_pressure"):
+                block_lines.append(f"**Recorded BP:** {all_vitals['blood_pressure']}")
+
+        elif is_diag_query:
+            if all_diags:
+                block_lines.append("#### 🩺 Clinical Diagnoses:")
+                for d in all_diags:
+                    cond = d.get("condition", "Condition")
+                    icd = d.get("icd10_code")
+                    icd_str = f" [ICD-10: `{icd}`]" if icd and icd != "N/A" else ""
+                    conf = d.get("confidence", "High")
+                    block_lines.append(f"- **{cond}**{icd_str} *(Confidence: {conf})*")
+            else:
+                block_lines.append("No specific diagnoses were extracted from the document.")
+
+            if all_meds:
+                med_str = ", ".join([f"{m.get('drug_name')} {m.get('dosage', '')}" for m in all_meds])
+                block_lines.append(f"\n**Current Pharmacotherapy:** {med_str}")
+
+        elif is_labs_query:
+            if all_labs:
+                block_lines.append("#### 🧪 Laboratory Test Results:")
+                for l in all_labs:
+                    flag = l.get("flag", "normal").upper()
+                    flag_icon = "⚠️ " if flag in ("HIGH", "LOW", "CRITICAL") else "✓ "
+                    val_str = f"{l.get('value')} {l.get('unit', '')}".strip()
+                    ref_str = f" (Ref: {l.get('reference_range')})" if l.get("reference_range") else ""
+                    block_lines.append(f"- {flag_icon}**{l.get('test_name')}**: `{val_str}` [{flag}]{ref_str}")
+            else:
+                block_lines.append("No specific laboratory biomarkers found in the referenced documents.")
+
+        elif is_vitals_query:
+            if all_vitals:
+                block_lines.append("#### 📊 Documented Vital Signs:")
+                vital_labels = {
+                    "blood_pressure": "Blood Pressure",
+                    "heart_rate": "Heart Rate / Pulse",
+                    "temperature": "Body Temperature",
+                    "oxygen_saturation": "Oxygen Saturation (SpO2)",
+                    "respiratory_rate": "Respiratory Rate",
+                    "weight": "Weight",
+                    "height": "Height",
+                    "bmi": "BMI",
+                }
+                for k, v in all_vitals.items():
+                    if v:
+                        lbl = vital_labels.get(k, k.replace("_", " ").title())
+                        block_lines.append(f"- **{lbl}:** {v}")
+            else:
+                block_lines.append("No specific vital signs recorded in the referenced documents.")
+
+        else:
+            if summaries:
+                block_lines.append(f"**Executive Summary:** {summaries[0]}\n")
+
+            if all_diags:
+                diag_str = ", ".join([f"{d.get('condition')} ({d.get('icd10_code', 'N/A')})" for d in all_diags])
+                block_lines.append(f"- **Diagnoses:** {diag_str}")
+
+            if all_meds:
+                med_str = ", ".join([f"{m.get('drug_name')} {m.get('dosage', '')} ({m.get('frequency', '')})" for m in all_meds])
+                block_lines.append(f"- **Prescriptions:** {med_str}")
+
+            if all_vitals:
+                v_list = [f"{k.replace('_', ' ').title()}: {v}" for k, v in all_vitals.items() if v]
+                if v_list:
+                    block_lines.append(f"- **Vitals:** {', '.join(v_list[:3])}")
+
+            if all_allergies:
+                a_str = ", ".join([a.get("allergen", "") for a in all_allergies if a.get("allergen")])
+                if a_str:
+                    block_lines.append(f"- **Allergies:** {a_str}")
+
+        output_blocks.append("\n".join(block_lines))
+
+    output_blocks.append("*Grounded in verified clinical records with similarity retrieval.*")
+    return "\n\n---\n\n".join(output_blocks)
 
 
 def answer_clinical_query(
@@ -357,7 +571,7 @@ def answer_clinical_query(
     Main entry point for Phase 7 Clinical RAG.
     1. Checks Redis cache for recent identical clinical query.
     2. Ensures collection is populated (auto-indexes if empty).
-    3. Retrieves top-k semantically relevant chunks from ChromaDB.
+    3. Retrieves top-k semantically relevant chunks from ChromaDB with document deduplication.
     4. Prompts LLM (or heuristic engine) with retrieved context.
     5. Stores response in Redis and returns grounded answer with exact document citations.
     """
@@ -379,13 +593,26 @@ def answer_clinical_query(
 
     citations = search_clinical_vectors(clean_query, patient_id=patient_id, top_k=top_k)
 
+    # If query specifically references a patient name or ID, focus citations strictly on that patient
+    if not patient_id and citations:
+        target_names = []
+        for c in citations:
+            if c.patient_name:
+                toks = [t.lower() for t in c.patient_name.split() if len(t) >= 3]
+                if (c.patient_name.lower() in clean_query.lower()) or (c.patient_id and c.patient_id.lower() in clean_query.lower()) or any(tok in clean_query.lower() for tok in toks):
+                    target_names.append(c.patient_name.lower())
+        if target_names:
+            filtered = [c for c in citations if c.patient_name and c.patient_name.lower() in target_names]
+            if filtered:
+                citations = filtered
+
     # 1. Try Gemini Grounded Synthesis
     answer = generate_rag_answer_with_gemini(clean_query, citations)
     model_used = f"gemini-{settings.LLM_MODEL}"
 
     # 2. Fallback to Grounded Heuristic Synthesis
     if not answer:
-        answer = generate_heuristic_rag_answer(clean_query, citations)
+        answer = generate_heuristic_rag_answer(db, clean_query, citations)
         model_used = "clinora-grounded-rag-engine"
 
     response = RAGQueryResponse(

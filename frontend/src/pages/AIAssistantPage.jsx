@@ -23,6 +23,99 @@ import {
   Trash2,
 } from 'lucide-react';
 
+function renderInline(str) {
+  if (!str) return '';
+  const parts = [];
+  const regex = /(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*)/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(str)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(str.substring(lastIndex, match.index));
+    }
+    const token = match[0];
+    if (token.startsWith('**') && token.endsWith('**')) {
+      parts.push(<strong key={match.index} className="text-white font-semibold">{token.slice(2, -2)}</strong>);
+    } else if (token.startsWith('`') && token.endsWith('`')) {
+      parts.push(<code key={match.index} className="px-1.5 py-0.5 rounded bg-slate-800 text-brand-lavender font-mono text-[11px]">{token.slice(1, -1)}</code>);
+    } else if (token.startsWith('*') && token.endsWith('*')) {
+      parts.push(<em key={match.index} className="text-slate-400 italic">{token.slice(1, -1)}</em>);
+    }
+    lastIndex = regex.lastIndex;
+  }
+
+  if (lastIndex < str.length) {
+    parts.push(str.substring(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : str;
+}
+
+function formatClinicalMarkdown(text) {
+  if (!text) return null;
+  const lines = text.split('\n');
+  const elements = [];
+
+  lines.forEach((line, lineIdx) => {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      elements.push(<div key={lineIdx} className="h-1.5" />);
+      return;
+    }
+
+    if (trimmed.startsWith('### ')) {
+      elements.push(
+        <h3 key={lineIdx} className="text-xs font-bold text-brand-lavender mt-2 mb-1 flex items-center gap-1.5">
+          {renderInline(trimmed.replace(/^###\s+/, ''))}
+        </h3>
+      );
+      return;
+    }
+
+    if (trimmed.startsWith('#### ')) {
+      elements.push(
+        <h4 key={lineIdx} className="text-[11px] font-semibold text-slate-100 mt-2 mb-0.5">
+          {renderInline(trimmed.replace(/^####\s+/, ''))}
+        </h4>
+      );
+      return;
+    }
+
+    if (trimmed === '---') {
+      elements.push(<hr key={lineIdx} className="border-white/10 my-2" />);
+      return;
+    }
+
+    if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+      elements.push(
+        <div key={lineIdx} className="flex items-start gap-1.5 pl-1.5 text-slate-200 py-0.5">
+          <span className="text-brand-coral font-bold shrink-0">•</span>
+          <span className="text-[11.5px] leading-relaxed">{renderInline(trimmed.substring(2))}</span>
+        </div>
+      );
+      return;
+    }
+
+    if (trimmed.startsWith('> ')) {
+      elements.push(
+        <div key={lineIdx} className="border-l-2 border-brand-purple/50 pl-2.5 py-1 text-slate-300 italic my-1 bg-brand-purple/5 rounded-r">
+          {renderInline(trimmed.substring(2))}
+        </div>
+      );
+      return;
+    }
+
+    elements.push(
+      <p key={lineIdx} className="leading-relaxed text-slate-200 text-[11.5px]">
+        {renderInline(trimmed)}
+      </p>
+    );
+  });
+
+  return elements;
+}
+
 export default function AIAssistantPage() {
   const [user, setUser] = useState(null);
   const [patientsList, setPatientsList] = useState([]);
@@ -246,7 +339,11 @@ export default function AIAssistantPage() {
                       : 'bg-slate-900/90 border border-white/[0.08] text-slate-200 rounded-tl-none w-full backdrop-blur-md'
                   }`}
                 >
-                  <div className="whitespace-pre-wrap leading-relaxed">{msg.text}</div>
+                  <div className="leading-relaxed">
+                    {msg.role === 'assistant' ? formatClinicalMarkdown(msg.text) : (
+                      <div className="whitespace-pre-wrap">{msg.text}</div>
+                    )}
+                  </div>
 
                   {/* Citations list if present */}
                   {msg.citations && msg.citations.length > 0 && (
