@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { getCurrentUser, reindexVectorStore } from '../services/api';
+import { useTheme } from '../context/ThemeContext';
 import {
   Settings,
   Shield,
@@ -14,6 +15,9 @@ import {
   CheckCircle2,
   Lock,
   Loader2,
+  Sun,
+  Moon,
+  Palette,
 } from 'lucide-react';
 
 export default function SettingsPage() {
@@ -21,6 +25,7 @@ export default function SettingsPage() {
   const [loadingUser, setLoadingUser] = useState(true);
   const [reindexing, setReindexing] = useState(false);
   const [reindexSuccess, setReindexSuccess] = useState(false);
+  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     async function loadUser() {
@@ -107,6 +112,53 @@ export default function SettingsPage() {
                   <span className="text-emerald-400 flex items-center gap-1 font-medium">
                     <CheckCircle2 className="h-3 w-3" /> Active & Verified
                   </span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Interface Theme & Appearance Card */}
+            <Card className="border-white/[0.08] bg-slate-900/80 backdrop-blur-xl">
+              <CardHeader className="border-b border-white/[0.04] pb-4">
+                <div className="flex items-center gap-2">
+                  <Palette className="h-4 w-4 text-purple-400" />
+                  <CardTitle className="text-sm font-bold text-white">Interface & Theme Settings</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3 pt-4 text-xs">
+                <div className="flex justify-between items-center py-1.5 border-b border-white/[0.04]">
+                  <span className="text-slate-400">Active Color Mode</span>
+                  <Badge variant={theme === 'dark' ? 'purple' : 'coral'} className="text-[10px] capitalize">
+                    {theme} Mode
+                  </Badge>
+                </div>
+                <div className="py-2">
+                  <label className="text-slate-400 block mb-2 font-medium">Select Theme Palette:</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setTheme('dark')}
+                      className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all ${
+                        theme === 'dark'
+                          ? 'border-brand-purple bg-brand-purple/20 text-white font-semibold ring-1 ring-brand-purple'
+                          : 'border-white/10 bg-slate-950/60 text-slate-400 hover:border-white/20'
+                      }`}
+                    >
+                      <Moon className="h-4 w-4 text-brand-purple" />
+                      <span>Dark Theme</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTheme('light')}
+                      className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all ${
+                        theme === 'light'
+                          ? 'border-brand-coral bg-brand-coral/20 text-white font-semibold ring-1 ring-brand-coral'
+                          : 'border-white/10 bg-slate-950/60 text-slate-400 hover:border-white/20'
+                      }`}
+                    >
+                      <Sun className="h-4 w-4 text-amber-400" />
+                      <span>Light Theme</span>
+                    </button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

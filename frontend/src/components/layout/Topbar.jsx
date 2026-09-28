@@ -1,5 +1,7 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
+import { Sun, Moon } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
 
 const PAGE_NAMES = {
   '/dashboard': 'Dashboard',
@@ -17,6 +19,7 @@ const PAGE_NAMES = {
 
 export default function Topbar({ user }) {
   const location = useLocation();
+  const { theme, toggleTheme } = useTheme();
   const pageTitle = PAGE_NAMES[location.pathname] || 'Clinical Intelligence Platform';
 
   return (
@@ -26,6 +29,20 @@ export default function Topbar({ user }) {
       </div>
 
       <div className="flex items-center gap-3">
+        {/* Theme Toggle Button */}
+        <button
+          onClick={toggleTheme}
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-slate-900/80 text-slate-300 hover:bg-slate-800 hover:text-white transition-all shadow-sm"
+          title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
+          aria-label="Toggle theme"
+        >
+          {theme === 'dark' ? (
+            <Sun className="h-4 w-4 text-amber-400 hover:rotate-45 transition-transform" />
+          ) : (
+            <Moon className="h-4 w-4 text-brand-purple hover:-rotate-12 transition-transform" />
+          )}
+        </button>
+
         {user?.email && (
           <span className="text-[11px] font-mono text-slate-500">
             {user.email}
