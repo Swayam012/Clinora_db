@@ -165,8 +165,8 @@ export default function AnalyticsPage() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
               label="OCR Success Rate"
-              value={summary ? `${summary.ocr_success_rate}%` : '98.4%'}
-              trend="+0.8%"
+              value={summary ? `${summary.ocr_success_rate}%` : '100%'}
+              trend={summary ? `${summary.processed_documents}/${summary.total_documents} Complete` : 'Active'}
               trendUp={true}
               icon={FileCheck}
               color="mint"
@@ -174,7 +174,7 @@ export default function AnalyticsPage() {
             />
             <StatCard
               label="Avg Vector Latency"
-              value={summary ? `${summary.avg_extraction_latency_ms} ms` : '42 ms'}
+              value={summary ? `${summary.avg_extraction_latency_ms} ms` : '38.5 ms'}
               trend="Optimal"
               trendUp={true}
               icon={Clock}
@@ -183,17 +183,17 @@ export default function AnalyticsPage() {
             />
             <StatCard
               label="Extracted Clinical Entities"
-              value={summary ? summary.total_entities_extracted.toLocaleString() : '14,892'}
-              trend="+18.2%"
+              value={summary ? summary.total_entities_extracted.toLocaleString() : '0'}
+              trend={summary ? `${summary.total_entities_extracted} Entities` : '0'}
               trendUp={true}
               icon={Brain}
               color="coral"
-              subtext="ICD-10, Meds, Labs"
+              subtext="ICD-10, Meds, Labs, Vitals"
             />
             <StatCard
               label="Total Active Patients"
-              value={summary ? summary.total_patients.toLocaleString() : '125'}
-              trend="+12.4%"
+              value={summary ? summary.total_patients.toLocaleString() : '0'}
+              trend={summary ? `${summary.total_patients} Enrolled` : '0'}
               trendUp={true}
               icon={Database}
               color="blue"
@@ -211,47 +211,55 @@ export default function AnalyticsPage() {
                     <Activity className="h-4 w-4 text-brand-coral" />
                     <CardTitle className="text-sm font-bold text-white">Top Extracted Clinical Diagnoses</CardTitle>
                   </div>
-                  <div className="flex items-center gap-1.5 overflow-x-auto">
-                    {categories.slice(0, 4).map((cat) => (
-                      <button
-                        key={cat}
-                        onClick={() => setSelectedCategory(cat)}
-                        className={`px-2 py-0.5 text-[10px] font-medium rounded transition-colors ${
-                          selectedCategory === cat
-                            ? 'bg-brand-purple text-white font-semibold'
-                            : 'bg-white/5 text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        {cat}
-                      </button>
-                    ))}
-                  </div>
+                  {categories.length > 1 && (
+                    <div className="flex items-center gap-1.5 overflow-x-auto">
+                      {categories.slice(0, 4).map((cat) => (
+                        <button
+                          key={cat}
+                          onClick={() => setSelectedCategory(cat)}
+                          className={`px-2 py-0.5 text-[10px] font-medium rounded transition-colors ${
+                            selectedCategory === cat
+                              ? 'bg-brand-purple text-white font-semibold'
+                              : 'bg-white/5 text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="space-y-4 pt-4">
-                {filteredDiagnoses.map((d, i) => (
-                  <div key={i} className="space-y-1.5 group">
-                    <div className="flex justify-between items-center text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-slate-200">{d.name}</span>
-                        {d.icd10 && (
-                          <span className="rounded bg-brand-purple/20 px-1.5 py-0.2 text-[10px] font-mono font-medium text-brand-lavender border border-brand-purple/30">
-                            {d.icd10}
-                          </span>
-                        )}
+                {filteredDiagnoses.length > 0 ? (
+                  filteredDiagnoses.map((d, i) => (
+                    <div key={i} className="space-y-1.5 group">
+                      <div className="flex justify-between items-center text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-slate-200">{d.name}</span>
+                          {d.icd10 && (
+                            <span className="rounded bg-brand-purple/20 px-1.5 py-0.2 text-[10px] font-mono font-medium text-brand-lavender border border-brand-purple/30">
+                              {d.icd10}
+                            </span>
+                          )}
+                        </div>
+                        <span className="font-mono text-slate-400 text-[11px] group-hover:text-brand-coral transition-colors">
+                          {d.count} patients ({d.pct}%)
+                        </span>
                       </div>
-                      <span className="font-mono text-slate-400 text-[11px] group-hover:text-brand-coral transition-colors">
-                        {d.count} patients ({d.pct}%)
-                      </span>
+                      <div className="h-2 w-full rounded-full bg-slate-950 overflow-hidden border border-white/5">
+                        <div
+                          style={{ width: `${Math.min(100, Math.max(10, d.pct * 2.5))}%` }}
+                          className="h-full rounded-full bg-gradient-to-r from-brand-purple via-indigo-500 to-brand-coral transition-all duration-500"
+                        />
+                      </div>
                     </div>
-                    <div className="h-2 w-full rounded-full bg-slate-950 overflow-hidden border border-white/5">
-                      <div
-                        style={{ width: `${d.pct * 2.5}%` }}
-                        className="h-full rounded-full bg-gradient-to-r from-brand-purple via-indigo-500 to-brand-coral transition-all duration-500"
-                      />
-                    </div>
+                  ))
+                ) : (
+                  <div className="py-8 text-center text-slate-500 text-xs">
+                    No clinical diagnoses extracted yet. Upload medical documents and run Clinical Extraction.
                   </div>
-                ))}
+                )}
               </CardContent>
             </Card>
 
@@ -269,30 +277,31 @@ export default function AnalyticsPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3 pt-4 text-xs">
-                {(telemetry?.document_distribution || [
-                  { document_type: 'Lab & Pathology Reports', count: 152, pct: 44.0, color: 'mint' },
-                  { document_type: 'Physician Prescriptions', count: 90, pct: 26.0, color: 'purple' },
-                  { document_type: 'Clinical Consultation Notes', count: 62, pct: 18.0, color: 'coral' },
-                  { document_type: 'Discharge Summaries', count: 44, pct: 12.0, color: 'blue' },
-                ]).map((item, idx) => (
-                  <div key={idx} className="p-3 rounded-xl bg-slate-950/70 border border-white/[0.06] space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-300 font-medium">{item.document_type}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-slate-500 font-mono text-[11px]">{item.count} docs</span>
-                        <Badge variant={item.color || 'purple'} className="text-[10px] font-bold">
-                          {item.pct}%
-                        </Badge>
+                {telemetry?.document_distribution && telemetry.document_distribution.length > 0 ? (
+                  telemetry.document_distribution.map((item, idx) => (
+                    <div key={idx} className="p-3 rounded-xl bg-slate-950/70 border border-white/[0.06] space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-300 font-medium">{item.document_type}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-500 font-mono text-[11px]">{item.count} docs</span>
+                          <Badge variant={item.color || 'purple'} className="text-[10px] font-bold">
+                            {item.pct}%
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="h-1.5 w-full rounded-full bg-slate-900 overflow-hidden">
+                        <div
+                          style={{ width: `${Math.max(5, item.pct)}%` }}
+                          className="h-full rounded-full bg-gradient-to-r from-purple-500 to-brand-coral"
+                        />
                       </div>
                     </div>
-                    <div className="h-1.5 w-full rounded-full bg-slate-900 overflow-hidden">
-                      <div
-                        style={{ width: `${item.pct}%` }}
-                        className="h-full rounded-full bg-gradient-to-r from-purple-500 to-brand-coral"
-                      />
-                    </div>
+                  ))
+                ) : (
+                  <div className="py-8 text-center text-slate-500 text-xs">
+                    No clinical documents uploaded yet.
                   </div>
-                ))}
+                )}
               </CardContent>
             </Card>
           </div>
@@ -326,11 +335,7 @@ export default function AnalyticsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5 bg-slate-950/40">
-                  {(telemetry?.ocr_telemetry || [
-                    { engine: 'RapidOCR (PP-OCRv4 Neural)', processed_count: 214, avg_confidence: 97.8, avg_latency_ms: 184.2, accuracy_rate: 98.9 },
-                    { engine: 'PyMuPDF (Native Digital PDF)', processed_count: 108, avg_confidence: 99.6, avg_latency_ms: 28.5, accuracy_rate: 99.8 },
-                    { engine: 'Tesseract OCR (Fallback Engine)', processed_count: 26, avg_confidence: 91.2, avg_latency_ms: 450.0, accuracy_rate: 92.4 },
-                  ]).map((eng, idx) => (
+                  {(telemetry?.ocr_telemetry || []).map((eng, idx) => (
                     <tr key={idx} className="hover:bg-white/[0.02]">
                       <td className="p-3 font-medium text-white flex items-center gap-2">
                         <Zap className="h-3.5 w-3.5 text-brand-coral" />
