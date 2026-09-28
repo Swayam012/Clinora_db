@@ -182,10 +182,21 @@ def index_single_document(db: Session, document_id: uuid.UUID):
 def index_all_documents(db: Session) -> IndexStatusResponse:
     """
     Indexes all active documents from PostgreSQL into the ChromaDB vector database.
+    Wipes stale/orphaned chunks to maintain 100% data consistency with PostgreSQL.
     """
     from app.models.document import Document
 
     collection = get_chroma_collection()
+
+    # Clear all stale/orphaned chunks from ChromaDB before rebuilding index
+    try:
+        all_data = collection.get()
+        if all_data and all_data.get("ids") and len(all_data["ids"]) > 0:
+            collection.delete(ids=all_data["ids"])
+            logger.info(f"Cleared {len(all_data['ids'])} stale chunks from ChromaDB during reindex.")
+    except Exception as e:
+        logger.warning(f"Could not purge existing chunks before reindexing: {e}")
+
     docs = db.query(Document).filter(Document.is_active == True).all()
 
     total_chunks = 0
@@ -205,6 +216,26 @@ def index_all_documents(db: Session) -> IndexStatusResponse:
     )
 
 
+def delete_patient_vectors(patient_id: uuid.UUID):
+    """Deletes all vector embeddings for a patient from ChromaDB."""
+    try:
+        collection = get_chroma_collection()
+        collection.delete(where={"patient_id": str(patient_id)})
+        logger.info(f"Deleted vector chunks for patient {patient_id}")
+    except Exception as e:
+        logger.warning(f"Failed to delete vectors for patient {patient_id}: {e}")
+
+
+def delete_document_vectors(document_id: uuid.UUID):
+    """Deletes all vector embeddings for a document from ChromaDB."""
+    try:
+        collection = get_chroma_collection()
+        collection.delete(where={"document_id": str(document_id)})
+        logger.info(f"Deleted vector chunks for document {document_id}")
+    except Exception as e:
+        logger.warning(f"Failed to delete vectors for document {document_id}: {e}")
+
+
 # ──────────────────────────────────────────────
 # 2. Semantic Search
 # ──────────────────────────────────────────────
@@ -213,9 +244,11 @@ def search_clinical_vectors(
     query: str,
     patient_id: Optional[uuid.UUID] = None,
     top_k: int = 4,
+    db: Optional[Session] = None,
 ) -> List[CitationItem]:
     """
     Performs cosine similarity search across indexed clinical chunks with document-level deduplication.
+    Verifies that all returned documents are active in PostgreSQL and purges orphaned chunks.
     """
     collection = get_chroma_collection()
     where_filter = None
@@ -243,11 +276,11 @@ def search_clinical_vectors(
     distances = results["distances"][0] if results.get("distances") else []
 
     doc_map = {}
+    orphaned_doc_ids = []
 
     for i in range(len(docs)):
         meta = metas[i] if i < len(metas) else {}
         dist = distances[i] if i < len(distances) else 0.5
-        # Cosine distance to similarity (1.0 = exact match)
         similarity = max(0.0, min(1.0, round(1.0 - (dist / 2.0), 3)))
 
         doc_id_str = meta.get("document_id")
@@ -257,7 +290,18 @@ def search_clinical_vectors(
         try:
             doc_uuid = uuid.UUID(doc_id_str)
         except Exception:
-            doc_uuid = uuid.uuid4()
+            continue
+
+        # If db session is provided, verify document is active in PostgreSQL
+        if db is not None:
+            db_doc = get_document_by_id(db, doc_uuid)
+            if not db_doc or not db_doc.is_active:
+                orphaned_doc_ids.append(doc_id_str)
+                continue
+
+        # Filter out low-similarity noise when no patient filter is specified
+        if not patient_id and similarity < 0.48:
+            continue
 
         chunk_type = meta.get("chunk_type", "")
         excerpt = docs[i]
@@ -280,6 +324,15 @@ def search_clinical_vectors(
             existing = doc_map[doc_id_str]
             if chunk_type == "structured_summary" or similarity > existing.similarity_score:
                 doc_map[doc_id_str] = citation
+
+    # Clean up any orphaned chunks found in vector DB
+    if orphaned_doc_ids:
+        try:
+            for orphan_id in set(orphaned_doc_ids):
+                collection.delete(where={"document_id": orphan_id})
+            logger.info(f"Purged {len(orphaned_doc_ids)} orphaned vector chunks from ChromaDB.")
+        except Exception:
+            pass
 
     deduped_citations = sorted(doc_map.values(), key=lambda c: c.similarity_score, reverse=True)
     return deduped_citations[:top_k]
@@ -570,10 +623,11 @@ def answer_clinical_query(
     """
     Main entry point for Phase 7 Clinical RAG.
     1. Checks Redis cache for recent identical clinical query.
-    2. Ensures collection is populated (auto-indexes if empty).
-    3. Retrieves top-k semantically relevant chunks from ChromaDB with document deduplication.
-    4. Prompts LLM (or heuristic engine) with retrieved context.
-    5. Stores response in Redis and returns grounded answer with exact document citations.
+    2. Identifies active patients matching query text directly in PostgreSQL.
+    3. If patient has unprocessed documents, auto-processes OCR and indexes them.
+    4. Retrieves top-k semantically relevant chunks from ChromaDB with document deduplication and active validation.
+    5. Prompts LLM (or heuristic engine) with retrieved context.
+    6. Stores response in Redis and returns grounded answer with exact document citations.
     """
     clean_query = query.strip()
     cache_key = f"rag:query:{clean_query}:{patient_id or 'global'}:{top_k}"
@@ -591,20 +645,56 @@ def answer_clinical_query(
         logger.info("ChromaDB collection is empty. Running initial indexing...")
         index_all_documents(db)
 
-    citations = search_clinical_vectors(clean_query, patient_id=patient_id, top_k=top_k)
+    # Check if query specifically names an active patient in PostgreSQL
+    matched_active_patient = None
+    if not patient_id:
+        active_patients = db.query(Patient).filter(Patient.is_active == True).all()
+        q_lower = clean_query.lower()
+        for p in active_patients:
+            p_full = (p.full_name or "").lower()
+            p_custom = (p.custom_id or "").lower()
+            p_tokens = [t for t in p_full.split() if len(t) >= 3]
+            if (p_full and p_full in q_lower) or (p_custom and p_custom in q_lower) or any(t in q_lower for t in p_tokens):
+                matched_active_patient = p
+                patient_id = p.id
+                break
 
-    # If query specifically references a patient name or ID, focus citations strictly on that patient
-    if not patient_id and citations:
-        target_names = []
-        for c in citations:
-            if c.patient_name:
-                toks = [t.lower() for t in c.patient_name.split() if len(t) >= 3]
-                if (c.patient_name.lower() in clean_query.lower()) or (c.patient_id and c.patient_id.lower() in clean_query.lower()) or any(tok in clean_query.lower() for tok in toks):
-                    target_names.append(c.patient_name.lower())
-        if target_names:
-            filtered = [c for c in citations if c.patient_name and c.patient_name.lower() in target_names]
-            if filtered:
-                citations = filtered
+    # If patient is matched, ensure any pending documents are processed and indexed
+    if patient_id:
+        pt_docs = db.query(Document).filter(Document.patient_id == patient_id, Document.is_active == True).all()
+        for doc in pt_docs:
+            if not doc.ocr_text:
+                try:
+                    from app.services.ocr_service import process_document_ocr
+                    process_document_ocr(db, doc.id)
+                except Exception as e:
+                    logger.warning(f"Auto OCR during RAG query failed for document {doc.id}: {e}")
+            index_single_document(db, doc.id)
+
+    citations = search_clinical_vectors(clean_query, patient_id=patient_id, top_k=top_k, db=db)
+
+    # If a specific patient was queried but no citations or documents were found
+    if matched_active_patient and not citations:
+        pt_docs = db.query(Document).filter(Document.patient_id == matched_active_patient.id, Document.is_active == True).all()
+        if not pt_docs:
+            doc_status_msg = "No clinical documents or lab reports have been uploaded for this patient yet."
+        else:
+            doc_titles = ", ".join([f"[{d.title}]" for d in pt_docs])
+            doc_status_msg = f"Document(s) {doc_titles} are uploaded but contain no extracted digital text."
+
+        answer = (
+            f"### 📋 Patient Record: **{matched_active_patient.full_name}** (`{matched_active_patient.custom_id}`)\n\n"
+            f"- **Registration Status:** Active in Clinora healthcare system.\n"
+            f"- **Clinical Records:** {doc_status_msg}\n"
+            f"- **Next Steps:** Please upload a readable PDF or image report in Document Manager to enable AI extraction and query analysis."
+        )
+        return RAGQueryResponse(
+            query=clean_query,
+            answer=answer,
+            citations=[],
+            model_used="clinora-grounded-rag-engine",
+            confidence="High",
+        )
 
     # 1. Try Gemini Grounded Synthesis
     answer = generate_rag_answer_with_gemini(clean_query, citations)

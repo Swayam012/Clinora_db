@@ -92,8 +92,14 @@ def update_patient_details(
 
 
 def soft_delete_patient(db: Session, patient_id: uuid.UUID) -> Optional[Patient]:
-    """Soft deletes patient (marks inactive)."""
+    """Soft deletes patient (marks inactive) and purges vectors from ChromaDB."""
     patient = patient_repository.get_patient_by_id(db, patient_id)
     if not patient:
         return None
-    return patient_repository.delete_patient(db, patient, hard_delete=False)
+    deleted = patient_repository.delete_patient(db, patient, hard_delete=False)
+    try:
+        from app.services.rag_service import delete_patient_vectors
+        delete_patient_vectors(patient_id)
+    except Exception:
+        pass
+    return deleted

@@ -196,6 +196,12 @@ async def save_and_register_document(
         uploaded_by_id=uploaded_by_id,
     )
 
+    try:
+        from app.services.rag_service import index_single_document
+        index_single_document(db, created_doc.id)
+    except Exception:
+        pass
+
     return map_document_to_response(created_doc)
 
 
@@ -274,9 +280,14 @@ def modify_document(
 
 
 def remove_document(db: Session, document_id: uuid.UUID) -> Optional[DocumentResponse]:
-    """Soft deletes document record."""
+    """Soft deletes document record and purges vectors from ChromaDB."""
     doc = document_repository.get_document_by_id(db, document_id)
     if not doc:
         return None
     deleted = document_repository.delete_document(db, doc, hard_delete=False)
+    try:
+        from app.services.rag_service import delete_document_vectors
+        delete_document_vectors(document_id)
+    except Exception:
+        pass
     return map_document_to_response(deleted)
